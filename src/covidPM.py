@@ -20,7 +20,7 @@ def plot_region(reg_df, reg_nm, daily):
         serio= serio.diff()
         recov= recov.diff()
         death= death.diff()
-        title="Total cases for "+reg_nm
+        title="Daily cases for "+reg_nm
         
         
     dates=reg_df["Fecha"]
@@ -43,9 +43,10 @@ if __name__ == '__main__':
 
     usage = 'usage: %prog [options]'
     parser = optparse.OptionParser(usage)
-
-    parser.add_option('--region' , dest='region' , help='# region to plot', default="Cantabria")
-
+    
+    parser.add_option('--region' , dest='region' , help='# region to plot', default="")
+    parser.add_option('--spain' , dest='spain' , help='run whole country', default=False, action='store_true')
+    parser.add_option('--daily' , dest='daily' , help='run whole country', default=False, action='store_true')
     (opt, args) = parser.parse_args()
 
 
@@ -58,7 +59,7 @@ if __name__ == '__main__':
     df=pd.read_csv(csv_file)
     df = df[:-1]
     df= df.fillna(0)
-    print df.columns
+    print df.tail()
 
     regions={"Cantabria" : "CB", "Canarias" : "CN",\
              "Catalunya":"CT", "Pais Vasco" : "PV",\
@@ -66,12 +67,10 @@ if __name__ == '__main__':
     for region in regions:
         if region not in opt.region: continue
         regdf= df.loc[df["CCAA Codigo ISO"] == regions[region]]
-        #plot_region(regdf, region, False)
-        df['Fecha'] = pd.to_datetime(df['Fecha'], errors='coerce').dt.date
+        plot_region(regdf, region, opt.daily)
+
+    if opt.spain==True:
+        df['Fecha'] = pd.to_datetime(df['Fecha'],format='%d/%m/%Y').dt.date
         dfsum= df.groupby('Fecha', as_index=False).sum()
-        #DATE COLUMN NOT BEING READ PROPERLY, CHECK THAT OUT
-        
-        #allregs=dfsum.sort_values(by='Fecha')
-        #allregs.Fecha=pd.to_datetime(allregs.Fecha)
-        #print type(allregs.Fecha)
+        plot_region(dfsum,"Spain",opt.daily)
 
