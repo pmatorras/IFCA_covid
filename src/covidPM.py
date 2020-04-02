@@ -9,7 +9,7 @@ df=pd.read_csv(csv_file)
 
 print df.columns
 
-Cant= df.loc[df["CCAA Codigo ISO"] == "CN"]
+Cant= df.loc[df["CCAA Codigo ISO"] == "CB"]
 
 dailycases= Cant["Casos "].diff()
 dailyhospi= Cant["Hospitalizados"].diff()
