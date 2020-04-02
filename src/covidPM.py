@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plot_region(reg_df, reg_nm, daily):
+def plot_region(reg_df, reg_nm, daily, dology):
     title="Total cases for "+reg_nm
     cases= reg_df["Casos "]
     hospi= reg_df["Hospitalizados"]
@@ -20,7 +20,7 @@ def plot_region(reg_df, reg_nm, daily):
         serio= serio.diff()
         recov= recov.diff()
         death= death.diff()
-        title="Daily cases for "+reg_nm
+        title="Daily new cases for "+reg_nm
         
         
     dates=reg_df["Fecha"]
@@ -34,7 +34,7 @@ def plot_region(reg_df, reg_nm, daily):
     plt.title(title)
     plt.legend()
     plt.grid()
-    plt.yscale('log')
+    if dology is True: plt.yscale('log')
     if daily is False: plt.ylim(5,1.2*np.nanmax(cases))
     plt.xticks(days,dates, rotation='vertical')
     plt.show()
@@ -46,7 +46,8 @@ if __name__ == '__main__':
     
     parser.add_option('--region' , dest='region' , help='# region to plot', default="")
     parser.add_option('--spain' , dest='spain' , help='run whole country', default=False, action='store_true')
-    parser.add_option('--daily' , dest='daily' , help='run whole country', default=False, action='store_true')
+    parser.add_option('--daily' , dest='daily' , help='check per day cases', default=False, action='store_true')
+    parser.add_option('--logy' , dest='logy' , help='do logy', default=False, action='store_true')
     (opt, args) = parser.parse_args()
 
 
@@ -67,10 +68,10 @@ if __name__ == '__main__':
     for region in regions:
         if region not in opt.region: continue
         regdf= df.loc[df["CCAA Codigo ISO"] == regions[region]]
-        plot_region(regdf, region, opt.daily)
+        plot_region(regdf, region, opt.daily,opt.logy)
 
-    if opt.spain==True:
+    if opt.spain is True:
         df['Fecha'] = pd.to_datetime(df['Fecha'],format='%d/%m/%Y').dt.date
         dfsum= df.groupby('Fecha', as_index=False).sum()
-        plot_region(dfsum,"Spain",opt.daily)
+        plot_region(dfsum,"Spain",opt.daily, opt.logy)
 
