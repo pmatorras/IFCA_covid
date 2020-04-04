@@ -16,7 +16,19 @@ def geterrsum(var,n):
     varerr = np.sqrt(varsum)
     return varerr
 
-
+#Function to, given the parameters, give a name
+def nameplot(reg_nm,daily,abschange,relative,dology):
+    hname='accumulated'
+    if daily is True: hname='daily'
+    if abschange is True: hname+='_abschange'
+    if relative  is True: hname+='_relchange'
+    hname+='_'+reg_nm
+    if dology is True: hname+='_log'
+    hname+='.png'
+    hfold='../Plots/'
+    os.system("mkdir -p "+hfold)
+    histo=hfold+hname
+    return histo
 def plot_region(reg_df, reg_nm, daily,abschange, relative, dology):
     #Do basic crosschecks to not get meaningless plots
     if(relative is True or abschange is True):
@@ -106,8 +118,10 @@ def plot_region(reg_df, reg_nm, daily,abschange, relative, dology):
     plt.legend()
     plt.grid()
     plt.xticks(days,dates, rotation='vertical')
-    plt.show()
-
+    #plt.show()
+    histo=nameplot(reg_nm,daily,abschange,relative,dology)
+    plt.savefig(histo)
+    print "plot saved in:\n",histo
 if __name__ == '__main__':
 
     #Define options
@@ -123,7 +137,7 @@ if __name__ == '__main__':
 
 
     #Check file and open it
-    os.system('wget -nc https://covid19.isciii.es/resources/serie_historica_acumulados.csv  --directory=../data')
+    os.system('wget -N https://covid19.isciii.es/resources/serie_historica_acumulados.csv  --directory=../data')
     csv_file='../data/serie_historica_acumulados.csv'
     df = pd.read_csv(csv_file)
     df = df[:-2]
@@ -145,5 +159,6 @@ if __name__ == '__main__':
     if opt.spain is True:
         df['Fecha'] = pd.to_datetime(df['Fecha'],format='%d/%m/%Y').dt.date
         dfsum = df.groupby('Fecha', as_index=False).sum()
-        plot_region(dfsum,"Spain",opt.daily,opt.change, opt.rel, opt.logy)
+        #plot_region(dfsum,"Spain",opt.daily,opt.change, opt.rel, opt.logy)
+
 
