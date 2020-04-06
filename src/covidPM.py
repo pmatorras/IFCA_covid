@@ -1,4 +1,3 @@
-#see me ha borrado hahaha
 import warnings, os, time, optparse
 from datetime import date, datetime
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
@@ -29,15 +28,17 @@ def nameplot(reg_nm,daily,abschange,relative,dology):
     os.system("mkdir -p "+hfold)
     histo=hfold+hname
     return histo
-def plot_region(reg_df, reg_nm, daily,abschange, relative, dology):
+
+def plot_region(reg_df, reg_nm, daily,abschange, relative, dology, display):
     #Do basic crosschecks to not get meaningless plots
+    
     if(relative is True or abschange is True):
         daily=True
         if relative is True: abschange=False
     cases= reg_df["Casos "]
     cond=cases>10
     if reg_nm is "Spain": cond=cases>1000
-    n=min(50,len(cases[cond])-1)
+    n=min(10,len(cases[cond])-1)
     #Save rows for the general cases
     hospi = reg_df["Hospitalizados"][cond]
     serio = reg_df["UCI"][cond]
@@ -111,7 +112,7 @@ def plot_region(reg_df, reg_nm, daily,abschange, relative, dology):
         if daily is False: plt.ylim(5,1.2*np.nanmax(cases))
         if dology is True:
             plt.yscale('log')
-            plt.ylim(10, 1.2*np.nanmax(cases))
+            if(reg_nm in "Spain") :plt.ylim(10, 1.2*np.nanmax(cases))
     #Add title and legend
     plt.title(title)
     plt.ylabel(ylab)
@@ -120,8 +121,10 @@ def plot_region(reg_df, reg_nm, daily,abschange, relative, dology):
     plt.xticks(days,dates, rotation='vertical')
     #plt.show()
     histo=nameplot(reg_nm,daily,abschange,relative,dology)
-    plt.savefig(histo)
+    plt.tight_layout()
+    plt.savefig(histo, dpi=200)
     print "plot saved in:\n",histo
+    if display is True: os.system('display '+histo)
 if __name__ == '__main__':
 
     #Define options
@@ -133,32 +136,34 @@ if __name__ == '__main__':
     parser.add_option('--change' , dest='change' , help='check per day abs changes', default=False, action='store_true')
     parser.add_option('--rel' , dest='rel' , help='check per dayrelative changes', default=False, action='store_true')
     parser.add_option('--logy' , dest='logy' , help='do logy', default=False, action='store_true')
+    parser.add_option('--display' , dest='display' , help='display', default=False, action='store_true')
     (opt, args) = parser.parse_args()
 
 
     #Check file and open it
     os.system('wget -N https://covid19.isciii.es/resources/serie_historica_acumulados.csv  --directory=../data')
+
     csv_file='../data/serie_historica_acumulados.csv'
     df = pd.read_csv(csv_file)
     df = df[:-2]
     df = df.fillna(0)
 
-
+    del df['Unnamed: 7']
+    #print df
     #Define possible regions
     regions={"Cantabria" : "CB", "Canarias"   : "CN",\
              "Catalunya" : "CT", "Pais Vasco" : "PV",\
              "Madrid"    : "MD", "Andalucia"  : "AN",\
              "Asturias"  : "AS"}
-
     #Call function given the input
     for region in regions:
         if opt.region not in region: continue
         regdf = df.loc[df["CCAA Codigo ISO"] == regions[region]]
-        plot_region(regdf, region, opt.daily,opt.change,opt.rel,opt.logy)
+        plot_region(regdf, region, opt.daily,opt.change,opt.rel,opt.logy, opt.display)
 
     if opt.spain is True:
         df['Fecha'] = pd.to_datetime(df['Fecha'],format='%d/%m/%Y').dt.date
         dfsum = df.groupby('Fecha', as_index=False).sum()
-        #plot_region(dfsum,"Spain",opt.daily,opt.change, opt.rel, opt.logy)
+        plot_region(dfsum,"Spain",opt.daily,opt.change, opt.rel, opt.logy, opt.display)
 
 
