@@ -35,7 +35,7 @@ def plot_region(reg_df, reg_nm, daily,abschange, relative, dology, display):
     if(relative is True or abschange is True):
         daily=True
         if relative is True: abschange=False
-    cases= reg_df["Casos "]
+    cases= reg_df["CASOS"]
     cond=cases>10
     if reg_nm is "Spain": cond=cases>1000
     n=min(10,len(cases[cond])-1)
@@ -44,7 +44,7 @@ def plot_region(reg_df, reg_nm, daily,abschange, relative, dology, display):
     serio = reg_df["UCI"][cond]
     recov = reg_df["Recuperados"][cond]
     death = reg_df["Fallecidos"][cond]
-    dates = reg_df["Fecha"][cond]
+    dates = reg_df["FECHA"][cond]
     cases = cases[cond]
     title = "Total cases for "+reg_nm
     ylab  = "Accumulated cases"
@@ -58,11 +58,11 @@ def plot_region(reg_df, reg_nm, daily,abschange, relative, dology, display):
         title = "Daily new cases for "+reg_nm
         ylab  = "Daily cases"
     #Save errors for both total and daily cases
-    caseserr=np.sqrt(cases) 
-    hospierr=np.sqrt(hospi) 
-    serioerr=np.sqrt(serio) 
-    recoverr=np.sqrt(recov) 
-    deatherr=np.sqrt(death)
+    caseserr=np.sqrt(abs(cases)) 
+    hospierr=np.sqrt(abs(hospi)) 
+    serioerr=np.sqrt(abs(serio))
+    recoverr=np.sqrt(abs(recov)) 
+    deatherr=np.sqrt(abs(death))
     #Calculate the absolute daily change
     if abschange is True:
         #Get errors
@@ -145,10 +145,10 @@ if __name__ == '__main__':
 
     csv_file='../data/serie_historica_acumulados.csv'
     df = pd.read_csv(csv_file)
-    df = df[:-2]
+    df = df.dropna() #to remove the last rows, it used to be df=df[:-2]
     df = df.fillna(0)
 
-    del df['Unnamed: 7']
+    #del df['Unnamed: 7']
     #print df
     #Define possible regions
     regions={"Cantabria" : "CB", "Canarias"   : "CN",\
@@ -158,12 +158,12 @@ if __name__ == '__main__':
     #Call function given the input
     for region in regions:
         if opt.region not in region: continue
-        regdf = df.loc[df["CCAA Codigo ISO"] == regions[region]]
+        regdf = df.loc[df["CCAA"] == regions[region]]
         plot_region(regdf, region, opt.daily,opt.change,opt.rel,opt.logy, opt.display)
 
     if opt.spain is True:
-        df['Fecha'] = pd.to_datetime(df['Fecha'],format='%d/%m/%Y').dt.date
-        dfsum = df.groupby('Fecha', as_index=False).sum()
+        df['FECHA'] = pd.to_datetime(df['FECHA'], format='%d/%m/%Y').dt.date
+        dfsum = df.groupby('FECHA', as_index=False).sum()
         plot_region(dfsum,"Spain",opt.daily,opt.change, opt.rel, opt.logy, opt.display)
 
 
