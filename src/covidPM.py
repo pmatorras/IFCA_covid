@@ -29,16 +29,13 @@ def nameplot(reg_nm,daily,abschange,relative,dology):
     histo=hfold+hname
     return histo
 
-def plot_region(reg_df, reg_nm, daily,abschange, relative, dology, display):
+def plot_region(reg_df, reg_nm, daily,abschange, relative, dology, display, ninp):
     #Do basic crosschecks to not get meaningless plots
-    
-    if(relative is True or abschange is True):
-        daily=True
-        if relative is True: abschange=False
+    if relative is True: abschange=False
     cases= reg_df["CASOS"]
     cond=cases>10
     if reg_nm is "Spain": cond=cases>1000
-    n=min(10,len(cases[cond])-1)
+    n=min(ninp,len(cases[cond])-1)
     #Save rows for the general cases
     hospi = reg_df["Hospitalizados"][cond]
     serio = reg_df["UCI"][cond]
@@ -48,6 +45,7 @@ def plot_region(reg_df, reg_nm, daily,abschange, relative, dology, display):
     cases = cases[cond]
     title = "Total cases for "+reg_nm
     ylab  = "Accumulated cases"
+    titad = "Accumulated"
     #Change rows in case daily data is desired
     if(daily is True):
         cases = cases.diff()
@@ -55,6 +53,7 @@ def plot_region(reg_df, reg_nm, daily,abschange, relative, dology, display):
         serio = serio.diff()
         recov = recov.diff()
         death = death.diff()
+        titad = "Daily"
         title = "Daily new cases for "+reg_nm
         ylab  = "Daily cases"
     #Save errors for both total and daily cases
@@ -63,6 +62,35 @@ def plot_region(reg_df, reg_nm, daily,abschange, relative, dology, display):
     serioerr=np.sqrt(abs(serio))
     recoverr=np.sqrt(abs(recov)) 
     deatherr=np.sqrt(abs(death))
+    normmax=True
+    if normmax is True:
+        activ=cases-recov
+        casmax=cases.max()
+        hosmax=hospi.max()
+        sermax=serio.max()
+        recmax=recov.max()
+        deamax=death.max()
+        actmax=activ.max()
+        caseserr = (np.sqrt(abs(1/cases)+(1/casmax))*(cases/casmax)).iloc[-n:].fillna(0)
+        activerr = (np.sqrt(abs(1/recov)+abs(1/cases)+(1/casmax))*(activ/casmax)).iloc[-n:].fillna(0)
+
+        hospierr = (np.sqrt(abs(1/hospi)+(1/hosmax))*(hospi/hosmax)).iloc[-n:].fillna(0)
+        serioerr = (np.sqrt(abs(1/serio)+(1/sermax))*(serio/sermax)).iloc[-n:].fillna(0)
+        recoverr = (np.sqrt(abs(1/recov)+(1/recmax))*(recov/recmax)).iloc[-n:].fillna(0)
+        deatherr = (np.sqrt(abs(1/death)+(1/deamax))*(death/deamax)).iloc[-n:].fillna(0)
+
+        cases = cases.iloc[-n:].fillna(0)/casmax
+        activ = activ.iloc[-n:].fillna(0)/actmax
+        hospi = hospi.iloc[-n:].fillna(0)/hosmax
+        serio = serio.iloc[-n:].fillna(0)/sermax
+        recov = recov.iloc[-n:].fillna(0)/recmax
+        death = death.iloc[-n:].fillna(0)/deamax
+        dates=dates.iloc[-n:]
+        
+        title   = titad+" Cases normalised to maximum for"+reg_nm
+        ylab    = titad+" Cases" 
+        print activ, len(activerr), len(cases)
+    #exit()
     #Calculate the absolute daily change
     if abschange is True:
         #Get errors
@@ -79,8 +107,8 @@ def plot_region(reg_df, reg_nm, daily,abschange, relative, dology, display):
         recov = recov.diff().iloc[-n:]
         death = death.diff().iloc[-n:]
         days  = np.linspace(1,len(cases),len(cases))
-        title = "Changes with respect to the previous day in "+reg_nm
-        ylab  = "Daily cases"
+        title = titad+"Changes with respect to the previous day in "+reg_nm
+        ylab  = titad+"cases"
     #Calculate the relative daily change
     if(relative is True):
         cases = 100*cases.pct_change().iloc[-n:].fillna(0)
@@ -88,8 +116,8 @@ def plot_region(reg_df, reg_nm, daily,abschange, relative, dology, display):
         serio = 100*serio.pct_change().iloc[-n:].fillna(0)
         recov = 100*recov.pct_change().iloc[-n:].fillna(0)
         death = 100*death.pct_change().iloc[-n:].fillna(0)
-        title = "Relative changes respect the previous day in "+reg_nm
-        ylab  = "Daily change (%)"
+        title = titad+" changes respect the previous day in "+reg_nm
+        ylab  = titad+" change (%)"
         dology=False
         days=np.linspace(1,len(cases[cond]),len(cases[cond]))
         dates=dates.iloc[-n:]
@@ -99,13 +127,22 @@ def plot_region(reg_df, reg_nm, daily,abschange, relative, dology, display):
         plt.axhline(y=0, color='black',linestyle='--')
     else:
         #Make histograms
+        if normmax is True:
+            activecases=activ
+            activecaseserr=activerr
+        else:
+            activecases=cases-recov
+            activecaseserr=np.sqrt(caseserr*caseserr+recoverr*recoverr)
         days=np.linspace(1,len(cases),len(cases))
-        plt.errorbar(days,cases,fmt='bo-',yerr=caseserr)
+        plt.errorbar(days,cases,fmt='ko-',yerr=caseserr, label='Casos totales')
+        plt.errorbar(days,activecases,fmt='bo-',yerr=activecaseserr, label="Casos activos")
         plt.errorbar(days,recov,fmt='go-',yerr=recoverr)
         plt.errorbar(days,death,fmt='ro-',yerr=deatherr)
         if abschange is False:
             plt.errorbar(days,hospi,fmt='co-',yerr=hospierr)
             plt.errorbar(days,serio,fmt='yo-',yerr=serioerr)
+        if normmax is True:
+            plt.axhline(y=1, color='black',linestyle='--')
 
     #Set up optional displays
     if(relative is False):
@@ -137,11 +174,14 @@ if __name__ == '__main__':
     parser.add_option('--rel' , dest='rel' , help='check per dayrelative changes', default=False, action='store_true')
     parser.add_option('--logy' , dest='logy' , help='do logy', default=False, action='store_true')
     parser.add_option('--display' , dest='display' , help='display', default=False, action='store_true')
+    parser.add_option('--frommax' , dest='frommax' , help='display', default=False, action='store_true')
+    parser.add_option('--n' , dest='ndays' , help='display', default='100')
     (opt, args) = parser.parse_args()
 
 
     #Check file and open it
-    os.system('wget -N https://covid19.isciii.es/resources/serie_historica_acumulados.csv  --directory=../data')
+    new=False
+    if(new is True):os.system('wget -N https://covid19.isciii.es/resources/serie_historica_acumulados.csv  --directory=../data')
 
     csv_file='../data/serie_historica_acumulados.csv'
     df = pd.read_csv(csv_file)
@@ -159,11 +199,17 @@ if __name__ == '__main__':
     for region in regions:
         if opt.region not in region: continue
         regdf = df.loc[df["CCAA"] == regions[region]]
-        plot_region(regdf, region, opt.daily,opt.change,opt.rel,opt.logy, opt.display)
+        plot_region(regdf, region, opt.daily,opt.change,opt.rel,opt.logy, opt.display, int(opt.ndays))
 
     if opt.spain is True:
         df['FECHA'] = pd.to_datetime(df['FECHA'], format='%d/%m/%Y').dt.date
         dfsum = df.groupby('FECHA', as_index=False).sum()
-        plot_region(dfsum,"Spain",opt.daily,opt.change, opt.rel, opt.logy, opt.display)
+
+        x=dfsum["CASOS"].diff()
+        y=dfsum["Fallecidos"].diff()
+        #plt.scatter(x,y)
+        
+        #plt.show()
+        plot_region(dfsum,"Spain",opt.daily,opt.change, opt.rel, opt.logy, opt.display, int(opt.ndays))
 
 
