@@ -4,6 +4,20 @@ warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+#Function to get variable and error
+def choosevars(reg_df,var_str,daily, cond):
+    var = reg_df[var_str][cond]
+    if daily is True: var=var.diff()
+    varerr = np.sqrt(abs(var))
+    return var, varerr
+
+
+
+def makenormax(var,n):
+    varmax=var.max()
+    varerr=(np.sqrt(abs(1/var)+(1/varmax))*(var/varmax)).iloc[-n:].fillna(0)
+    var=var.iloc[-n:].fillna(0)/varmax
+    return var, varerr
 '''
  Small function to take advantage of the fact of the poisonian unc is the square root, and the unc of the difference is the sqrt of each error squared
 '''
@@ -29,67 +43,48 @@ def nameplot(reg_nm,daily,abschange,relative,dology):
     histo=hfold+hname
     return histo
 
-def plot_region(reg_df, reg_nm, daily,abschange, relative, dology, display, ninp):
+def plot_region(reg_df, reg_nm, daily,abschange, relative, frommax, dology, display, ninp):
     #Do basic crosschecks to not get meaningless plots
     if relative is True: abschange=False
     cases= reg_df["CASOS"]
     cond=cases>10
     if reg_nm is "Spain": cond=cases>1000
     n=min(ninp,len(cases[cond])-1)
-    #Save rows for the general cases
-    hospi = reg_df["Hospitalizados"][cond]
-    serio = reg_df["UCI"][cond]
-    recov = reg_df["Recuperados"][cond]
-    death = reg_df["Fallecidos"][cond]
+
+    
+    cases, caseserr=choosevars(reg_df,"CASOS", daily, cond)
+    hospi, hospierr=choosevars(reg_df,"Hospitalizados", daily, cond)
+    serio, serioerr=choosevars(reg_df,"UCI", daily, cond)
+    recov, recoverr=choosevars(reg_df,"Recuperados", daily, cond)
+    death, deatherr=choosevars(reg_df,"Fallecidos", daily, cond)
     dates = reg_df["FECHA"][cond]
-    cases = cases[cond]
+    #Save rows for the general cases
     title = "Total cases for "+reg_nm
     ylab  = "Accumulated cases"
     titad = "Accumulated"
     #Change rows in case daily data is desired
     if(daily is True):
-        cases = cases.diff()
-        hospi = hospi.diff()
-        serio = serio.diff()
-        recov = recov.diff()
-        death = death.diff()
         titad = "Daily"
         title = "Daily new cases for "+reg_nm
         ylab  = "Daily cases"
-    #Save errors for both total and daily cases
-    caseserr=np.sqrt(abs(cases)) 
-    hospierr=np.sqrt(abs(hospi)) 
-    serioerr=np.sqrt(abs(serio))
-    recoverr=np.sqrt(abs(recov)) 
-    deatherr=np.sqrt(abs(death))
-    normmax=True
-    if normmax is True:
+    #Calculate  changes with respect to the maximum
+    if frommax is True:
         activ=cases-recov
-        casmax=cases.max()
-        hosmax=hospi.max()
-        sermax=serio.max()
-        recmax=recov.max()
-        deamax=death.max()
         actmax=activ.max()
-        caseserr = (np.sqrt(abs(1/cases)+(1/casmax))*(cases/casmax)).iloc[-n:].fillna(0)
-        activerr = (np.sqrt(abs(1/recov)+abs(1/cases)+(1/casmax))*(activ/casmax)).iloc[-n:].fillna(0)
-
-        hospierr = (np.sqrt(abs(1/hospi)+(1/hosmax))*(hospi/hosmax)).iloc[-n:].fillna(0)
-        serioerr = (np.sqrt(abs(1/serio)+(1/sermax))*(serio/sermax)).iloc[-n:].fillna(0)
-        recoverr = (np.sqrt(abs(1/recov)+(1/recmax))*(recov/recmax)).iloc[-n:].fillna(0)
-        deatherr = (np.sqrt(abs(1/death)+(1/deamax))*(death/deamax)).iloc[-n:].fillna(0)
-
-        cases = cases.iloc[-n:].fillna(0)/casmax
+        activerr = (np.sqrt(abs(np.sqrt(cases+recov)/activ)**2+(1/actmax))*(activ/actmax)).iloc[-n:].fillna(0)
+        
         activ = activ.iloc[-n:].fillna(0)/actmax
-        hospi = hospi.iloc[-n:].fillna(0)/hosmax
-        serio = serio.iloc[-n:].fillna(0)/sermax
-        recov = recov.iloc[-n:].fillna(0)/recmax
-        death = death.iloc[-n:].fillna(0)/deamax
+
+        #activ, activerr=makenormax(activ,n)
+        cases, caseserr=makenormax(cases,n)
+        hospi, hospierr=makenormax(hospi,n)
+        serio, serioerr=makenormax(serio,n)
+        recov, recoverr=makenormax(recov,n)
+        death, deatherr=makenormax(death,n)
         dates=dates.iloc[-n:]
         
         title   = titad+" Cases normalised to maximum for"+reg_nm
         ylab    = titad+" Cases" 
-        print activ, len(activerr), len(cases)
     #exit()
     #Calculate the absolute daily change
     if abschange is True:
@@ -121,18 +116,20 @@ def plot_region(reg_df, reg_nm, daily,abschange, relative, dology, display, ninp
         dology=False
         days=np.linspace(1,len(cases[cond]),len(cases[cond]))
         dates=dates.iloc[-n:]
+    #Make histograms
+    if frommax is True:
+        activecases=activ
+        activecaseserr=activerr
+    else:
+        activecases=cases-recov
+        activecaseserr=np.sqrt(caseserr*caseserr+recoverr*recoverr)
+
+    if relative is True:
         plt.plot(days, cases,'bo-')
         plt.plot(days, recov,'go-')
     	plt.plot(days, death,'ro-')
         plt.axhline(y=0, color='black',linestyle='--')
     else:
-        #Make histograms
-        if normmax is True:
-            activecases=activ
-            activecaseserr=activerr
-        else:
-            activecases=cases-recov
-            activecaseserr=np.sqrt(caseserr*caseserr+recoverr*recoverr)
         days=np.linspace(1,len(cases),len(cases))
         plt.errorbar(days,cases,fmt='ko-',yerr=caseserr, label='Casos totales')
         plt.errorbar(days,activecases,fmt='bo-',yerr=activecaseserr, label="Casos activos")
@@ -141,9 +138,9 @@ def plot_region(reg_df, reg_nm, daily,abschange, relative, dology, display, ninp
         if abschange is False:
             plt.errorbar(days,hospi,fmt='co-',yerr=hospierr)
             plt.errorbar(days,serio,fmt='yo-',yerr=serioerr)
-        if normmax is True:
+        if frommax is True:
             plt.axhline(y=1, color='black',linestyle='--')
-
+            plt.axhline(y=0, color='olive',linestyle='--')
     #Set up optional displays
     if(relative is False):
         if daily is False: plt.ylim(5,1.2*np.nanmax(cases))
@@ -199,17 +196,17 @@ if __name__ == '__main__':
     for region in regions:
         if opt.region not in region: continue
         regdf = df.loc[df["CCAA"] == regions[region]]
-        plot_region(regdf, region, opt.daily,opt.change,opt.rel,opt.logy, opt.display, int(opt.ndays))
+        plot_region(regdf, region, opt.daily,opt.change,opt.rel,opt.frommax,opt.logy, opt.display,  int(opt.ndays))
 
     if opt.spain is True:
         df['FECHA'] = pd.to_datetime(df['FECHA'], format='%d/%m/%Y').dt.date
         dfsum = df.groupby('FECHA', as_index=False).sum()
 
-        x=dfsum["CASOS"].diff()
+        x=dfsum["Recuperados"].diff()
         y=dfsum["Fallecidos"].diff()
         #plt.scatter(x,y)
         
         #plt.show()
-        plot_region(dfsum,"Spain",opt.daily,opt.change, opt.rel, opt.logy, opt.display, int(opt.ndays))
+        plot_region(dfsum,"Spain",opt.daily,opt.change, opt.rel, opt.frommax,opt.logy, opt.display,int(opt.ndays))
 
 
