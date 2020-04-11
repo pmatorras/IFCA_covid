@@ -4,12 +4,6 @@ warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-#Function to get variable and error
-def choosevars(reg_df,var_str,daily, cond):
-    var = reg_df[var_str][cond]
-    if daily is True: var=var.diff()
-    varerr = np.sqrt(abs(var))
-    return var, varerr
 
 
 
@@ -21,12 +15,16 @@ def makenormax(var,n):
 '''
  Small function to take advantage of the fact of the poisonian unc is the square root, and the unc of the difference is the sqrt of each error squared
 '''
-def geterrsum(var,n):
+def geterrsum(var,n, relch):
     line = pd.Series([0])
     varb = line.append(var, ignore_index=True)
-    varsum = varb+var.reset_index(drop=True)
-    varsum = varsum[:-1].fillna(0).iloc[-n:]
+    varres = var.reset_index(drop=True)
+    varsum = varb+varres
+    varsum = varsum[:-1].fillna(0)
     varerr = np.sqrt(varsum)
+    if relch is True:
+        varrel= abs(1/varerr)+abs(1/varres)
+        varerr= abs(varrel*100*varres.pct_change().fillna(0))
     return varerr
 
 #Function to, given the parameters, give a name
@@ -43,6 +41,25 @@ def nameplot(reg_nm,daily,abschange,relative,dology):
     histo=hfold+hname
     return histo
 
+#Function to get variable and error
+def choosevars(reg_df,var_str,daily, absch, relch, n, cond):
+    var = reg_df[var_str][cond]
+    if daily is True: var=var.diff()
+    varerr = np.sqrt(abs(var))
+    if n<len(var):
+        var    = var.iloc[-n:]
+        varerr = varerr.iloc[-n:]
+    if absch is True:
+        varerr = geterrsum(var,n, relch)
+        var    = var.diff().fillna(0)
+    if relch is True:
+        varerr = geterrsum(var,n,relch)
+        #print varerr
+        var = 100*var.pct_change().fillna(0)
+
+    return var, varerr
+
+
 def plot_region(reg_df, reg_nm, daily,abschange, relative, frommax, dology, display, ninp):
     #Do basic crosschecks to not get meaningless plots
     if relative is True: abschange=False
@@ -50,13 +67,13 @@ def plot_region(reg_df, reg_nm, daily,abschange, relative, frommax, dology, disp
     cond=cases>10
     if reg_nm is "Spain": cond=cases>1000
     n=min(ninp,len(cases[cond])-1)
-
-    
-    cases, caseserr=choosevars(reg_df,"CASOS", daily, cond)
-    hospi, hospierr=choosevars(reg_df,"Hospitalizados", daily, cond)
-    serio, serioerr=choosevars(reg_df,"UCI", daily, cond)
-    recov, recoverr=choosevars(reg_df,"Recuperados", daily, cond)
-    death, deatherr=choosevars(reg_df,"Fallecidos", daily, cond)
+    absch=abschange
+    relch=relative
+    cases, caseserr=choosevars(reg_df,"CASOS"         , daily, absch,relch, n, cond)
+    hospi, hospierr=choosevars(reg_df,"Hospitalizados", daily, absch,relch, n, cond)
+    serio, serioerr=choosevars(reg_df,"UCI"           , daily, absch,relch, n, cond)
+    recov, recoverr=choosevars(reg_df,"Recuperados"   , daily, absch,relch, n, cond)
+    death, deatherr=choosevars(reg_df,"Fallecidos"    , daily, absch,relch, n, cond)
     dates = reg_df["FECHA"][cond]
     #Save rows for the general cases
     title = "Total cases for "+reg_nm
@@ -71,7 +88,7 @@ def plot_region(reg_df, reg_nm, daily,abschange, relative, frommax, dology, disp
     if frommax is True:
         activ=cases-recov
         actmax=activ.max()
-        activerr = (np.sqrt(abs(np.sqrt(cases+recov)/activ)**2+(1/actmax))*(activ/actmax)).iloc[-n:].fillna(0)
+        activerr = (np.sqrt(abs(np.sqrt(cases+recov)/activ)**2+(1/actmax))*(activ/actmax)).fillna(0)
         
         activ = activ.iloc[-n:].fillna(0)/actmax
 
@@ -89,28 +106,11 @@ def plot_region(reg_df, reg_nm, daily,abschange, relative, frommax, dology, disp
     #Calculate the absolute daily change
     if abschange is True:
         #Get errors
-        caseserr = geterrsum(cases,n)
-        hospierr = geterrsum(hospi,n)
-        serioerr = geterrsum(serio,n)
-        recoverr = geterrsum(recov,n)
-        deatherr = geterrsum(death,n)
-
-        #Make difference
-        cases = cases.diff().iloc[-n:].fillna(0)
-        hospi = hospi.diff().iloc[-n:]
-        serio = serio.diff().iloc[-n:]
-        recov = recov.diff().iloc[-n:]
-        death = death.diff().iloc[-n:]
         days  = np.linspace(1,len(cases),len(cases))
         title = titad+"Changes with respect to the previous day in "+reg_nm
         ylab  = titad+"cases"
     #Calculate the relative daily change
     if(relative is True):
-        cases = 100*cases.pct_change().iloc[-n:].fillna(0)
-        hospi = 100*hospi.pct_change().iloc[-n:].fillna(0)
-        serio = 100*serio.pct_change().iloc[-n:].fillna(0)
-        recov = 100*recov.pct_change().iloc[-n:].fillna(0)
-        death = 100*death.pct_change().iloc[-n:].fillna(0)
         title = titad+" changes respect the previous day in "+reg_nm
         ylab  = titad+" change (%)"
         dology=False
@@ -124,23 +124,17 @@ def plot_region(reg_df, reg_nm, daily,abschange, relative, frommax, dology, disp
         activecases=cases-recov
         activecaseserr=np.sqrt(caseserr*caseserr+recoverr*recoverr)
 
-    if relative is True:
-        plt.plot(days, cases,'bo-')
-        plt.plot(days, recov,'go-')
-    	plt.plot(days, death,'ro-')
-        plt.axhline(y=0, color='black',linestyle='--')
-    else:
-        days=np.linspace(1,len(cases),len(cases))
-        plt.errorbar(days,cases,fmt='ko-',yerr=caseserr, label='Casos totales')
-        plt.errorbar(days,activecases,fmt='bo-',yerr=activecaseserr, label="Casos activos")
-        plt.errorbar(days,recov,fmt='go-',yerr=recoverr)
-        plt.errorbar(days,death,fmt='ro-',yerr=deatherr)
-        if abschange is False:
-            plt.errorbar(days,hospi,fmt='co-',yerr=hospierr)
-            plt.errorbar(days,serio,fmt='yo-',yerr=serioerr)
-        if frommax is True:
-            plt.axhline(y=1, color='black',linestyle='--')
-            plt.axhline(y=0, color='olive',linestyle='--')
+    days=np.linspace(1,len(cases),len(cases))
+    plt.errorbar(days,cases,fmt='ko-',yerr=caseserr, label='Casos totales')
+    plt.errorbar(days,activecases,fmt='bo-',yerr=activecaseserr, label="Casos activos")
+    plt.errorbar(days,recov,fmt='go-',yerr=recoverr)
+    plt.errorbar(days,death,fmt='ro-',yerr=deatherr)
+    if  True not in [abschange,relative]:
+        plt.errorbar(days,hospi,fmt='co-',yerr=hospierr)
+        plt.errorbar(days,serio,fmt='yo-',yerr=serioerr)
+    if frommax is True:
+        plt.axhline(y=1, color='black',linestyle='--')
+        plt.axhline(y=0, color='olive',linestyle='--')
     #Set up optional displays
     if(relative is False):
         if daily is False: plt.ylim(5,1.2*np.nanmax(cases))
@@ -172,13 +166,13 @@ if __name__ == '__main__':
     parser.add_option('--logy' , dest='logy' , help='do logy', default=False, action='store_true')
     parser.add_option('--display' , dest='display' , help='display', default=False, action='store_true')
     parser.add_option('--frommax' , dest='frommax' , help='display', default=False, action='store_true')
-    parser.add_option('--n' , dest='ndays' , help='display', default='100')
+    parser.add_option('--n' , dest='ndays' , help='number of days to show', default='100')
+    parser.add_option('--new' , dest='new' , help='renew csv', default=False, action='store_true')
     (opt, args) = parser.parse_args()
 
 
     #Check file and open it
-    new=False
-    if(new is True):os.system('wget -N https://covid19.isciii.es/resources/serie_historica_acumulados.csv  --directory=../data')
+    if(opt.new is True):os.system('wget -N https://covid19.isciii.es/resources/serie_historica_acumulados.csv  --directory=../data')
 
     csv_file='../data/serie_historica_acumulados.csv'
     df = pd.read_csv(csv_file)
