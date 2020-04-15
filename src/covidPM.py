@@ -38,52 +38,54 @@ if __name__ == '__main__':
     inreg=opt.region.lower()
     datdir='../data/'
     ndays=int(opt.ndays)
-
-    #Check file and open it
-    if  ('it' in inreg): path= 'https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-andamento-nazionale/dpc-covid19-ita-andamento-nazionale.csv'
-    elif('fr' in inreg): path= 'https://raw.githubusercontent.com/opencovid19-fr/data/master/dist/chiffres-cles.csv'
-    elif('uk' in inreg): path= 'https://raw.githubusercontent.com/tomwhite/covid-19-uk-data/master/data/covid-19-totals-uk.csv'
-    elif('ch' in inreg): path= 'https://raw.githubusercontent.com/openZH/covid_19/master/COVID19_Fallzahlen_CH_total.csv'
-    elif('us' in inreg): path= 'https://covidtracking.com/api/us/daily.csv'
-    else:                path= 'https://covid19.isciii.es/resources/serie_historica_acumulados.csv'
+    ccaa='none'
+    regnm='none'
+    for country in countries:
+        cname=countries[country]
+        if inreg in cname.lower():
+            regnm=cname
+            inreg=country
+    if('none' in regnm):
+        for region in regions:
+            if inreg in region.lower() :
+                inreg = 'sp'
+                regnm = region
+                ccaa  = regions[region]
+                print "region is", region
+        if(inreg is not 'sp'):
+            print "Country or region",inreg,"not found"
+            exit()
+    path=paths[inreg]
     if(opt.new is True):
         print "downloading files"
         os.system('wget -N '+path+' --directory='+datdir)    
     csv_file=datdir+path.split('/')[-1]
     
     df = pd.read_csv(csv_file)
-    if opt.display is True and 'sp' in inreg:shownotes(df)
-    
-    if 'sp' in inreg: df = df.dropna() #it used to be df=df[:-2]
-    df = df.fillna(0)
+   
+    #Depending on the inreg output, open the file accordingly
+    if "sp" in inreg:
+        if opt.display is True: shownotes(df)
+        df.dropna()
+        if 'none' not in ccaa:
+            print "ee"
+            regdf = df.loc[df["CCAA"] == ccaa]
+            regnm = region
 
-    cantons={"GE": "Geneve", "ZH": "Zurich"}
-    #Define possible regions
-    regions={"Cantabria" : "CB", "Canarias"   : "CN",\
-             "Catalunya" : "CT", "Pais Vasco" : "PV",\
-             "Madrid"    : "MD", "Andalucia"  : "AN",\
-             "Asturias"  : "AS"}
-    #Call function given the input
-    if "sp" in opt.region.lower():
-        df['FECHA'] = pd.to_datetime(df['FECHA'], format='%d/%m/%Y').dt.date
-        regdf = df.groupby('FECHA', as_index=False).sum()
-        regnm = "Spain"
+        else:
+            df['FECHA'] = pd.to_datetime(df['FECHA'], format='%d/%m/%Y').dt.date
+            regdf = df.groupby('FECHA', as_index=False).sum()
     elif 'it' in inreg:
         regdf = df
-        regnm = "Italy"
         df['data']=pd.to_datetime(df['data'], errors='coerce').dt.date
     elif 'fr' in inreg:
         dffra = df.loc[df["granularite"]=="pays"]
         regdf = dffra.loc[dffra["source_nom"].str.contains('Minis')]
-        regnm = "France"
 
     elif 'uk' in inreg:
         df['Date'] = pd.to_datetime(df['Date']).dt.date
         regdf= df.sort_values(by='Date')
-        regnm= "UK"
-        #exit()
     elif 'ch' in inreg:
-        regnm= "Switzerland"
         df['date'] = pd.to_datetime(df['date']).dt.date
         
         if len(inreg.split('_'))>1:
@@ -105,11 +107,5 @@ if __name__ == '__main__':
     elif 'us' in inreg:
         df['date'] = pd.to_datetime(df['date'], format='%Y%m%d').dt.date
         regdf= df.sort_values(by='date')
-        regnm= "USA"
-        #exit()
-    else:
-        for region in regions:
-            if opt.region not in region: continue
-            regdf = df.loc[df["CCAA"] == regions[region]]
-            regnm = region
+
     plot_region(regdf, regnm, opt.daily,opt.change,opt.rel,opt.frommax,opt.logy, opt.display, ndays)
