@@ -32,19 +32,45 @@ def geterrsum(var,n, relch):
         varerr= abs(varrel*100*varres.pct_change().fillna(0))
     return varerr
 
+regvars={'cases':{'sp':'CASOS'         , 'it':'totale_casi',\
+                  'fr':'cas_confirmes' , 'us':'positive' ,\
+                  'uk':'ConfirmedCases', 'ch':'ncumul_conf'},\
+         'activ':{'sp':'Casos Activos' , 'it':'totale_positivi',\
+                  'fr':'cas_actifs'    , 'us':'activeCases',\
+                  'uk':'n/A'           , 'ch':'ncumul_axt'},\
+         'hospi':{'sp':'Hospitalizados', 'it':'totale_ospedalizzati',\
+                  'fr':'hospitalises'  , 'us':'hospitalizedCurrently',\
+                  'uk':'n/A'           , 'ch':'ncumul_hosp'},\
+         'serio':{'sp':'UCI'           , 'it':'terapia_intensiva',\
+                  'fr':'hospitalises'  , 'us':'inIcuCurrently',\
+                  'uk':'n/A'           , 'ch':'ncumul_ICU'},\
+         'recov':{'sp':'Recuperados'   , 'it':'ricoverati_con_sintomi',\
+                  'fr':'gueris'        , 'us':'recovered',\
+                  'uk':'n/A'           , 'ch':'ncumul_released'},\
+         'death':{'sp':'Fallecidos'    , 'it':'deceduti',\
+                  'fr':'deces'         , 'us':'death',\
+                  'uk':'Deaths'        , 'ch':'ncumul_deceased'},\
+         'date' :{'sp':'FECHA'         , 'it':'data', 'fr':'date', 'us': 'date', 'uk':'Date', 'ch':'date'}
+}
+
+labdaily={'sp':' diarios', 'it':' giornaliero', 'fr':' par jour', 'us': ' per day', 'uk': ' per day', 'ch': ' per day'}
 
 #Function to get variable and error
-def choosevars(reg_df,reg_nm,var_str,daily, absch, relch,frommax, n, cond):
-    if("act" in var_str.lower()):
-        if('France' in reg_nm) :
-            var = reg_df["cas_confirmes"]- reg_df["gueris"]
-        elif('US' in reg_nm):
-            var = reg_df["positive"]-reg_df["recovered"]
-        else:
-            var = reg_df["CASOS"]- reg_df["Recuperados"]
+def choosevars(reg_df,reg_nm,var_str,daily, absch, relch,frommax, n, cond,fmtvar):
+    regs='sp'
+    if 'it' in reg_nm.lower(): regs='it'
+    if 'fr' in reg_nm.lower(): regs='fr'
+    if 'uk' in reg_nm.lower(): regs='uk'
+    if 'us' in reg_nm.lower(): regs='us'
+    if 'sw' in reg_nm.lower(): regs='ch'
 
+    varnm=regvars[var_str][regs]
+    print varnm, var_str
+    #exit()
+    if("act" in var_str.lower()):
+        var=reg_df[regvars['cases'][regs]]-reg_df[regvars['recov'][regs]]
     else:
-        var = reg_df[var_str]
+        var = reg_df[varnm]
     var=var[cond]
     if daily is True: var=var.diff()
     varerr = np.sqrt(abs(var))
@@ -60,6 +86,13 @@ def choosevars(reg_df,reg_nm,var_str,daily, absch, relch,frommax, n, cond):
         var = 100*var.pct_change().fillna(0)
     if frommax is True:
         var,varerr= norm_max(var,n)
+
+    days=np.linspace(1,len(var),len(var))
+    dates = reg_df[regvars['date'][regs]][cond].iloc[-n:]
+    labes=''
+    if daily is True:labes=labdaily[regs]
+    plt.errorbar(days,var,fmt=fmtvar,yerr=varerr, label=varnm+labes)
+    
     return var, varerr
 
 #Choose title for the histograms
@@ -79,7 +112,7 @@ def choosetitle(reg_nm,daily,absch,relch,frommax):
         title = titad+" changes respect the previous day in "+reg_nm
         ylab  = titad+" change (%)"
     if frommax is True:
-        title   = titad+" Cases normalised to maximum for"+reg_nm
+        title   = titad+" Cases normalised to maximum for "+reg_nm
         ylab    = titad+" Cases" 
     return title, ylab, titad
 
@@ -98,21 +131,6 @@ def nameplot(reg_nm,daily,absch,relch,frommax,dology):
     histo=hfold+hname
     return histo
 
-regvars={'cases':{'sp':'CASOS'         , 'it':'totale_casi',\
-                  'fr':'cas_confirmes' , 'us':'positive'},\
-         'activ':{'sp':'Casos Activos' , 'it':'totale_positivi',\
-                  'fr':'cas_actifs'    , 'us':'activeCases'},\
-         'hospi':{'sp':'Hospitalizados', 'it':'totale_ospedalizzati',\
-                  'fr':'hospitalises'  , 'us':'hospitalizedCurrently'},\
-         'serio':{'sp':'UCI'           , 'it':'terapia_intensiva',\
-                  'fr':'hospitalises'  , 'us':'inIcuCurrently'},\
-         'recov':{'sp':'Recuperados'   , 'it':'ricoverati_con_sintomi',\
-                  'fr':'gueris'        , 'us':'recovered'},\
-         'death':{'sp':'Fallecidos'    , 'it':'deceduti',\
-                  'fr':'deces'         , 'us':'death'},\
-         'date' :{'sp':'FECHA'         , 'it':'data', 'fr':'date', 'us': 'date'}
-}
-labdaily={'sp':' diarios', 'it':' giornaliero', 'fr':' par jour', 'us': ' per day'}
 
 def plot_region(reg_df, reg_nm, daily,absch, relch, frommax, dology, display, ninp):
     #Do basic crosschecks to not get meaningless plots
@@ -122,7 +140,9 @@ def plot_region(reg_df, reg_nm, daily,absch, relch, frommax, dology, display, ni
     regs='sp'
     if 'it' in reg_nm.lower(): regs='it'
     if 'fr' in reg_nm.lower(): regs='fr'
+    if 'uk' in reg_nm.lower(): regs='uk'
     if 'us' in reg_nm.lower(): regs='us'
+    if 'sw' in reg_nm.lower(): regs='ch'
     cases= reg_df[regvars['cases'][regs]]
     cond=cases>10
     if reg_nm in ["Spain","Italy"]: cond=cases>1000
@@ -135,32 +155,30 @@ def plot_region(reg_df, reg_nm, daily,absch, relch, frommax, dology, display, ni
         reg_df[regvars['death'][regs]]=death
         #reg_df=reg_df.deces+reg_df.deces_ehpad# type(death)
 
-    activ, activerr=choosevars(reg_df, reg_nm, regvars['activ'][regs], daily, absch,relch,frommax, n, cond)
-    cases, caseserr=choosevars(reg_df, reg_nm, regvars['cases'][regs], daily, absch,relch,frommax, n, cond)
-    hospi, hospierr=choosevars(reg_df, reg_nm, regvars['hospi'][regs], daily, absch,relch,frommax, n, cond)
-    serio, serioerr=choosevars(reg_df, reg_nm, regvars['serio'][regs], daily, absch,relch,frommax, n, cond)
-    recov, recoverr=choosevars(reg_df, reg_nm, regvars['recov'][regs], daily, absch,relch,frommax, n, cond)
-    death, deatherr=choosevars(reg_df, reg_nm, regvars['death'][regs], daily, absch,relch,frommax, n, cond)
-    days=np.linspace(1,len(cases),len(cases))
-    dates = reg_df[regvars['date'][regs]][cond].iloc[-n:]
     #print dates, type(dates)
 
     #Make histograms
     title,ylab,titad= choosetitle(reg_nm,daily,absch,relch,frommax)
     labes=''
     if daily is True:labes=labdaily[regs]
-    plt.errorbar(days,activ,fmt='bo-',yerr=activerr, label=regvars['activ'][regs]+labes)
-    plt.errorbar(days,cases,fmt='ko-',yerr=caseserr, label=regvars['cases'][regs]+labes)
-    plt.errorbar(days,recov,fmt='go-',yerr=recoverr, label=regvars['recov'][regs]+labes)
-    plt.errorbar(days,death,fmt='ro-',yerr=deatherr, label=regvars['death'][regs]+labes)
-    if  True not in [absch,relch]:# and "Sp" not in reg_nm:
-        plt.errorbar(days,hospi,fmt='co-',yerr=hospierr)
-        plt.errorbar(days,serio,fmt='yo-',yerr=serioerr)
+    if regs not in 'uk':
+        activ, activerr=choosevars(reg_df, reg_nm, 'activ', daily, absch,relch,frommax, n, cond, 'bo-')
+    cases, caseserr=choosevars(reg_df, reg_nm, 'cases', daily, absch,relch,frommax, n, cond, 'ko-')
+    if True not in [absch,relch] and regs not in ['sp', 'uk']:
+        hospi, hospierr=choosevars(reg_df, reg_nm, 'hospi', daily, absch,relch,frommax, n, cond, 'co-')
+        serio, serioerr=choosevars(reg_df, reg_nm, 'serio', daily, absch,relch,frommax, n, cond, 'yo-')
+    if regs not in 'uk':
+        recov, recoverr=choosevars(reg_df, reg_nm, 'recov', daily, absch,relch,frommax, n, cond, 'go-')
+    death, deatherr=choosevars(reg_df, reg_nm, 'death', daily, absch,relch,frommax, n, cond, 'ro-')
+    days=np.linspace(1,len(cases),len(cases))
+    dates = reg_df[regvars['date'][regs]][cond].iloc[-n:]
+
     if frommax is True:
         plt.axhline(y=1, color='black',linestyle='--')
         plt.axhline(y=0, color='olive',linestyle='--')
         logy=False
-        ymin=min(0,min(recov), min(serio), min(hospi))-0.1
+        if regs  in 'uk': ymin=-0.1
+        else :ymin=min(0,min(recov))-0.1
         plt.ylim(ymin,1.1)
     #Set up optional displays
     if(relch is False):
@@ -208,6 +226,8 @@ if __name__ == '__main__':
     #Check file and open it
     if  ('it' in inreg): path= 'https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-andamento-nazionale/dpc-covid19-ita-andamento-nazionale.csv'
     elif('fr' in inreg): path= 'https://raw.githubusercontent.com/opencovid19-fr/data/master/dist/chiffres-cles.csv'
+    elif('uk' in inreg): path= 'https://raw.githubusercontent.com/tomwhite/covid-19-uk-data/master/data/covid-19-totals-uk.csv'
+    elif('ch' in inreg): path= 'https://raw.githubusercontent.com/openZH/covid_19/master/COVID19_Fallzahlen_CH_total.csv'
     elif('us' in inreg): path= 'https://covidtracking.com/api/us/daily.csv'
     else:                path= 'https://covid19.isciii.es/resources/serie_historica_acumulados.csv'
     if(opt.new is True):
@@ -240,6 +260,16 @@ if __name__ == '__main__':
         regdf = dffra.loc[dffra["source_nom"].str.contains('Minis')]
         regnm = "France"
 
+    elif 'uk' in inreg:
+        df['Date'] = pd.to_datetime(df['Date']).dt.date
+        regdf= df.sort_values(by='Date')
+        regnm= "UK"
+        #exit()
+    elif 'ch' in inreg:
+        df['date'] = pd.to_datetime(df['date']).dt.date
+        regdf = df.groupby('date', as_index=False).sum()
+        regnm= "Switzerland"
+        #exit()
     elif 'us' in inreg:
         df['date'] = pd.to_datetime(df['date'], format='%Y%m%d').dt.date
         regdf= df.sort_values(by='date')
