@@ -42,7 +42,7 @@ if __name__ == '__main__':
     regnm='none'
     for country in countries:
         cname=countries[country]
-        if inreg in cname.lower():
+        if inreg in country.lower():
             regnm=cname
             inreg=country
     if('none' in regnm):
@@ -62,16 +62,12 @@ if __name__ == '__main__':
     csv_file=datdir+path.split('/')[-1]
     
     df = pd.read_csv(csv_file)
-   
     #Depending on the inreg output, open the file accordingly
     if "sp" in inreg:
         if opt.display is True: shownotes(df)
         df.dropna()
         if 'none' not in ccaa:
-            print "ee"
             regdf = df.loc[df["CCAA"] == ccaa]
-            regnm = region
-
         else:
             df['FECHA'] = pd.to_datetime(df['FECHA'], format='%d/%m/%Y').dt.date
             regdf = df.groupby('FECHA', as_index=False).sum()
