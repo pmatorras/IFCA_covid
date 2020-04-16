@@ -15,29 +15,11 @@ def shownotes(df):
     uccaa=pd.Series(map(u,ccaas[ccaas.str.len()>2]))
     for i in range(0,len(uccaa)):print uccaa[i]
 
-if __name__ == '__main__':
-    exec(open("plot_covid.py").read())
 
-    #Define options
-    usage = 'usage: %prog [options]'
-    parser = optparse.OptionParser(usage)
-    parser.add_option('--reg' , dest='region' , help='# region to plot', default="none")
-    parser.add_option('--daily' , dest='daily' , help='check per day cases', default=False, action='store_true')
-    parser.add_option('--change' , dest='change' , help='check per day abs changes', default=False, action='store_true')
-    parser.add_option('--rel' , dest='rel' , help='check per dayrelative changes', default=False, action='store_true')
-    parser.add_option('--logy' , dest='logy' , help='do logy', default=False, action='store_true')
-    parser.add_option('--display' , dest='display' , help='display', default=False, action='store_true')
-    parser.add_option('--frommax' , dest='frommax' , help='display', default=False, action='store_true')
-    parser.add_option('--n' , dest='ndays' , help='number of days to show', default='100')
-    parser.add_option('--new' , dest='new' , help='renew csv', default=False, action='store_true')
-    (opt, args) = parser.parse_args()
 
-    if "none" in opt.region:
-        print "choose a region"
-        exit()
-    inreg=opt.region.lower()
-    datdir='../data/'
-    ndays=int(opt.ndays)
+
+def findreg(region):
+    inreg=region.lower()
     ccaa='none'
     regnm='none'
     for country in countries:
@@ -52,19 +34,16 @@ if __name__ == '__main__':
                 regnm = region
                 ccaa  = regions[region]
                 print "region is", region
-        if(inreg is not 'sp'):
+        if len(inreg.split('_'))>1: regnm='Switzerland'#print "this is a canton"
+        elif(inreg  is not 'sp' and len(inreg.split('_'))<2):
             print "Country or region",inreg,"not found"
             exit()
-    path=paths[inreg]
-    if(opt.new is True):
-        print "downloading files"
-        os.system('wget -N '+path+' --directory='+datdir)    
-    csv_file=datdir+path.split('/')[-1]
-    
-    df = pd.read_csv(csv_file)
-    #Depending on the inreg output, open the file accordingly
+    return regnm,inreg,ccaa
+
+def handledf(df,inreg,display):
+#Depending on the inreg output, open the file accordingly
     if "sp" in inreg:
-        if opt.display is True: shownotes(df)
+        if display is True: shownotes(df)
         df.dropna()
         if 'none' not in ccaa:
             regdf = df.loc[df["CCAA"] == ccaa]
@@ -103,5 +82,51 @@ if __name__ == '__main__':
     elif 'us' in inreg:
         df['date'] = pd.to_datetime(df['date'], format='%Y%m%d').dt.date
         regdf= df.sort_values(by='date')
+    return regdf
 
+
+if __name__ == '__main__':
+    exec(open("plot_covid.py").read())
+
+    #Define options
+    usage = 'usage: %prog [options]'
+    parser = optparse.OptionParser(usage)
+    parser.add_option('--reg' , dest='region' , help='# region to plot', default="none")
+    parser.add_option('--daily' , dest='daily' , help='check per day cases', default=False, action='store_true')
+    parser.add_option('--change' , dest='change' , help='check per day abs changes', default=False, action='store_true')
+    parser.add_option('--rel' , dest='rel' , help='check per dayrelative changes', default=False, action='store_true')
+    parser.add_option('--logy' , dest='logy' , help='do logy', default=False, action='store_true')
+    parser.add_option('--display' , dest='display' , help='display', default=False, action='store_true')
+    parser.add_option('--frommax' , dest='frommax' , help='display', default=False, action='store_true')
+    parser.add_option('--n' , dest='ndays' , help='number of days to show', default='100')
+    parser.add_option('--new' , dest='new' , help='renew csv', default=False, action='store_true')
+    (opt, args) = parser.parse_args()
+
+    if "none" in opt.region:
+        print "choose a region"
+        exit()
+    datdir='../data/'
+    ndays=int(opt.ndays)
+
+    regs=''
+    if 'all' in opt.region.lower():
+        for country in countries:
+            regs+=country+'_'
+
+            #regs=opt.region
+    for reg in regs.split('_'):
+        print reg
+    #exit()
+    regnm, inreg, ccaa =findreg(opt.region)
+    path=paths[inreg.split('_')[0]]
+
+    if(opt.new is True):
+        print "downloading files"
+        os.system('wget -N '+path+' --directory='+datdir)    
+    csv_file=datdir+path.split('/')[-1]
+    
+    df = pd.read_csv(csv_file)
+
+    regdf=handledf(df, inreg, opt.display)
+    print regdf, regnm
     plot_region(regdf, regnm, opt.daily,opt.change,opt.rel,opt.frommax,opt.logy, opt.display, ndays)
