@@ -19,17 +19,17 @@ def findreg(inreg):
     reg_ini = 'none'
     reg_nm  = 'none'
     for region in regions:
-        if inreg in regions[region].lower() or inreg in region.lower() :
+        if inreg in region.lower() or regions[region].lower().find(inreg) is 0 :
             cou_ini  = 'sp'
             reg_ini  = region
-            print "region is", regions[region]
+            print "region is  22", inreg, regions[region]
     if 'none' in reg_nm: 
         for canton in cantons:
-            if inreg in cantons[canton].lower() or inreg in canton.lower():
+            if inreg in canton.lower() or cantons[canton].lower().find(inreg) is 0:
                 cou_ini = 'ch'
                 reg_ini = canton
                 print "Canton is",  cantons[canton]
-    return inreg,cou_ini,reg_ini
+    return cou_ini, reg_ini
 
 
 def findcountry(inputreg):
@@ -39,13 +39,15 @@ def findcountry(inputreg):
     reg_ini = 'none'
     for country in countries:
         cname=countries[country]
-        if inreg in country.lower() or inreg in cname.lower():
+        if inreg in country.lower() or cname.lower().find(inreg) is 0:
+            print country
             cou_ini = country
             inreg=country
+    print "country", cou_ini
     if('none' in cou_ini or len(reg_sp)>1):
         print "region"
-        inreg,cou_ini,reg_ini=findreg(reg_sp[len(reg_sp)-1])
-    return reg_ini,cou_ini,inreg
+        cou_ini,reg_ini=findreg(reg_sp[len(reg_sp)-1])
+    return cou_ini, reg_ini
 
 def handledf(df,cou_in, reg_in,display):
 #Depending on the inreg output, open the file accordingly
@@ -101,30 +103,40 @@ if __name__ == '__main__':
     if "none" in opt.region:
         print "choose a region"
         exit()
-    datdir='../data/'
-    ndays=int(opt.ndays)
+    datdir = '../data/'
+    ndays  = int(opt.ndays)
+    regin  = opt.region.lower()
 
-    regs=''
-    if 'all' in opt.region.lower() or 'countries' in opt.region.lower():
-        for country in countries:
-            regs+=countries[country]+'_'
-    if 'all' in opt.region.lower() or 'ccaa' in opt.region.lower():
-        for region in regions:
-            print regions
-            #regs=opt.region
-    for reg in regs.split('_'):
-        print 1#|reg
-    #exit()
-    reg_ini, cou_ini,inreg =findcountry(opt.region)
-    path=paths[cou_ini]
+    doCantons   = False
+    doRegions   = False
+    doCountries = False
+    if('canton' in regin or 'all' in regin): doCantons   = True
+    if('region' in regin or 'all' in regin): doRegions   = True
+    if('countr' in regin or 'all' in regin): doCountries = True
 
-    if(opt.new is True):
-        print "downloading files"
-        os.system('wget -N '+path+' --directory='+datdir)    
-    csv_file=datdir+path.split('/')[-1]
+    reg_plots=''
+    if(doRegions is True):
+        for region in regions:    reg_plots+=region+'_'
+    if(doCantons is True):
+        for canton in cantons:    reg_plots+=canton+'_'
+    if(doCountries is True):
+        for country in countries: reg_plots+=country+'_'
+    else: reg_plots=opt.region
+    if(reg_plots[-1]=='_'): reg_plots= reg_plots[:-1]
     
-    df = pd.read_csv(csv_file)
+    print reg_plots
 
-    regdf=handledf(df, cou_ini,reg_ini, opt.display)
-    ini=[cou_ini,reg_ini]
-    plot_region(regdf, ini, opt.daily,opt.change,opt.rel,opt.frommax,opt.logy, opt.display, ndays)
+    for reg in reg_plots.split('_'):
+        print reg
+        cou_ini,reg_ini = findcountry(reg)
+
+        path     = paths[cou_ini]
+        csv_file = datdir+path.split('/')[-1]
+        if(opt.new is True):
+            print "downloading files"
+            os.system('wget -N '+path+' --directory='+datdir)    
+    
+        df    = pd.read_csv(csv_file)
+        regdf = handledf(df, cou_ini,reg_ini, opt.display)
+        ini   = [cou_ini,reg_ini]
+        plot_region(regdf, ini, opt.daily,opt.change,opt.rel,opt.frommax,opt.logy, opt.display, ndays)

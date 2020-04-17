@@ -32,10 +32,10 @@ def geterrsum(var,n, relch):
 exec(open("variables.py").read())
 
 #Function to get variable and error                                                                              
-def choosevars(reg_df,cou_nm,var_str,daily, absch, relch,frommax, n, cond,fmtvar):
-    varnm=regvars[var_str][cou_nm]
+def choosevars(reg_df,cou_ini,var_str,daily, absch, relch,frommax, n, cond,fmtvar):
+    varnm=regvars[var_str][cou_ini]
     if("act" in var_str.lower()):
-        var=reg_df[regvars['cases'][cou_nm]]-reg_df[regvars['recov'][cou_nm]]-reg_df[regvars['death'][cou_nm]]
+        var=reg_df[regvars['cases'][cou_ini]]-reg_df[regvars['recov'][cou_ini]]-reg_df[regvars['death'][cou_ini]]
     else:
         var = reg_df[varnm]
     var=var[cond]
@@ -57,7 +57,7 @@ def choosevars(reg_df,cou_nm,var_str,daily, absch, relch,frommax, n, cond,fmtvar
     days=np.linspace(1,len(var),len(var))
     dates = reg_df[regvars['date'][cou_ini]][cond].iloc[-n:]
     labes=''
-    if daily is True:labes=labdaily[regs]
+    if daily is True:labes=labdaily[cou_ini]
     if max(var>0):
         plt.errorbar(days,var,fmt=fmtvar,yerr=varerr, label=varnm+labes)
 
