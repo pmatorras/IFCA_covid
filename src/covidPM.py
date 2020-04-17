@@ -15,71 +15,67 @@ def shownotes(df):
     uccaa=pd.Series(map(u,ccaas[ccaas.str.len()>2]))
     for i in range(0,len(uccaa)):print uccaa[i]
 
+def findreg(inreg):
+    reg_ini = 'none'
+    reg_nm  = 'none'
+    for region in regions:
+        if inreg in regions[region].lower() or inreg in region.lower() :
+            cou_ini  = 'sp'
+            reg_ini  = region
+            print "region is", regions[region]
+    if 'none' in reg_nm: 
+        for canton in cantons:
+            if inreg in cantons[canton].lower() or inreg in canton.lower():
+                cou_ini = 'ch'
+                reg_ini = canton
+                print "Canton is",  cantons[canton]
+    return inreg,cou_ini,reg_ini
 
 
-
-def findreg(region):
-    inreg=region.lower()
-    ccaa='none'
-    regnm='none'
+def findcountry(inputreg):
+    inreg=inputreg.lower()
+    reg_sp  = inreg.split('_')
+    cou_ini = 'none'
+    reg_ini = 'none'
     for country in countries:
         cname=countries[country]
-        if inreg in country.lower():
-            regnm=cname
+        if inreg in country.lower() or inreg in cname.lower():
+            cou_ini = country
             inreg=country
-    if('none' in regnm):
-        for region in regions:
-            if inreg in region.lower() :
-                inreg = 'sp'
-                regnm = region
-                ccaa  = regions[region]
-                print "region is", region
-        if len(inreg.split('_'))>1: regnm='Switzerland'#print "this is a canton"
-        elif(inreg  is not 'sp' and len(inreg.split('_'))<2):
-            print "Country or region",inreg,"not found"
-            exit()
-    return regnm,inreg,ccaa
+    if('none' in cou_ini or len(reg_sp)>1):
+        print "region"
+        inreg,cou_ini,reg_ini=findreg(reg_sp[len(reg_sp)-1])
+    return reg_ini,cou_ini,inreg
 
-def handledf(df,inreg,display):
+def handledf(df,cou_in, reg_in,display):
 #Depending on the inreg output, open the file accordingly
-    if "sp" in inreg:
+    if "sp" in cou_in:
         if display is True: shownotes(df)
         df.dropna()
-        if 'none' not in ccaa:
-            regdf = df.loc[df["CCAA"] == ccaa]
+        if 'none' not in reg_in:
+            regdf = df.loc[df["CCAA"] == reg_in]
         else:
             df['FECHA'] = pd.to_datetime(df['FECHA'], format='%d/%m/%Y').dt.date
             regdf = df.groupby('FECHA', as_index=False).sum()
-    elif 'it' in inreg:
+    elif 'it' in cou_in:
         regdf = df
         df['data']=pd.to_datetime(df['data'], errors='coerce').dt.date
-    elif 'fr' in inreg:
+    elif 'fr' in cou_in:
         dffra = df.loc[df["granularite"]=="pays"]
         regdf = dffra.loc[dffra["source_nom"].str.contains('Minis')]
 
-    elif 'uk' in inreg:
+    elif 'uk' in cou_in:
         df['Date'] = pd.to_datetime(df['Date']).dt.date
         regdf= df.sort_values(by='Date')
-    elif 'ch' in inreg:
+    elif 'ch' in cou_in:
         df['date'] = pd.to_datetime(df['date']).dt.date
-        
-        if len(inreg.split('_'))>1:
-            canton=inreg.split('_')[1].upper()
-            regdf=df.loc[df["abbreviation_canton_and_fl"]==canton]
-            if len(regdf)<1:
-                print "unknown canton"
-                exit()
-            else:
-                if canton in cantons:
-                    regnm+='_'+cantons[canton]
-                else:
-                    regnm+='_'+canton
+        if 'none' not in reg_in:
+            regdf=df.loc[df["abbreviation_canton_and_fl"]==reg_in]
         else:
             dfch = df.groupby('date', as_index=False).sum()
             regdf = dfch[dfch['ncumul_conf'].diff()>0]#, regdf['date']
             if len(dfch)>len(regdf): print "MISSING DATA"
-        #exit()
-    elif 'us' in inreg:
+    elif 'us' in cou_in:
         df['date'] = pd.to_datetime(df['date'], format='%Y%m%d').dt.date
         regdf= df.sort_values(by='date')
     return regdf
@@ -109,16 +105,18 @@ if __name__ == '__main__':
     ndays=int(opt.ndays)
 
     regs=''
-    if 'all' in opt.region.lower():
+    if 'all' in opt.region.lower() or 'countries' in opt.region.lower():
         for country in countries:
-            regs+=country+'_'
-
+            regs+=countries[country]+'_'
+    if 'all' in opt.region.lower() or 'ccaa' in opt.region.lower():
+        for region in regions:
+            print regions
             #regs=opt.region
     for reg in regs.split('_'):
-        print reg
+        print 1#|reg
     #exit()
-    regnm, inreg, ccaa =findreg(opt.region)
-    path=paths[inreg.split('_')[0]]
+    reg_ini, cou_ini,inreg =findcountry(opt.region)
+    path=paths[cou_ini]
 
     if(opt.new is True):
         print "downloading files"
@@ -127,6 +125,6 @@ if __name__ == '__main__':
     
     df = pd.read_csv(csv_file)
 
-    regdf=handledf(df, inreg, opt.display)
-    print regdf, regnm
-    plot_region(regdf, regnm, opt.daily,opt.change,opt.rel,opt.frommax,opt.logy, opt.display, ndays)
+    regdf=handledf(df, cou_ini,reg_ini, opt.display)
+    ini=[cou_ini,reg_ini]
+    plot_region(regdf, ini, opt.daily,opt.change,opt.rel,opt.frommax,opt.logy, opt.display, ndays)

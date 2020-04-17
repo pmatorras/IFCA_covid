@@ -5,7 +5,7 @@ regvars={'cases':{'sp':'CASOS'         , 'it':'totale_casi',\
                   'uk':'ConfirmedCases', 'ch':'ncumul_conf'},\
          'activ':{'sp':'Casos Activos' , 'it':'totale_positivi',\
                   'fr':'cas_actifs'    , 'us':'activeCases',\
-                  'uk':'n/A'           , 'ch':'ncumul_axt'},\
+                  'uk':'n/A'           , 'ch':'ncumul_act'},\
          'hospi':{'sp':'Hospitalizados', 'it':'totale_ospedalizzati',\
                   'fr':'hospitalises'  , 'us':'hospitalizedCurrently',\
                   'uk':'n/A'           , 'ch':'ncumul_hosp'},\
@@ -34,19 +34,7 @@ labdaily={'sp':' diarios', 'it':' giornaliero', 'fr':' par jour', 'us': \
 
 #Define possible regions
 cantons={"GE": "Geneve", "ZH": "Zurich"}
-regions={"Cantabria" : "CB", "Canarias"   : "CN",\
-         "Catalunya" : "CT", "Pais Vasco" : "PV",\
-         "Madrid"    : "MD", "Andalucia"  : "AN",\
-         "Asturias"  : "AS"}
-
+regions ={ "CB": "Cantabria", "CN": "Canarias" , "CT": "Catalunya",\
+        "MD": "Madrid"   , "AN": "Andalucia", "AS": "Asturias"}
 
 countries={'sp':'Spain','it':'Italy','fr':'France','uk': 'UK','us':'USA','ch':'Switzerland'}
-#Function to get the abbreviated name of the df            
-def getregs(reg_nm):
-    regs='sp'
-    if 'it' in reg_nm.lower(): regs='it'
-    if 'fr' in reg_nm.lower(): regs='fr'
-    if 'uk' in reg_nm.lower(): regs='uk'
-    if 'us' in reg_nm.lower(): regs='us'
-    if 'sw' in reg_nm.lower(): regs='ch'
-    return regs
