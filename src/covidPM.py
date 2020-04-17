@@ -114,6 +114,8 @@ if __name__ == '__main__':
     if('region' in regin or 'all' in regin): doRegions   = True
     if('countr' in regin or 'all' in regin): doCountries = True
 
+    print doCantons
+    #exit()
     reg_plots=''
     if(doRegions is True):
         for region in regions:    reg_plots+=region+'_'
@@ -121,7 +123,7 @@ if __name__ == '__main__':
         for canton in cantons:    reg_plots+=canton+'_'
     if(doCountries is True):
         for country in countries: reg_plots+=country+'_'
-    else: reg_plots=opt.region
+    elif True not in [doCantons,doRegions,doCountries]: reg_plots=opt.region
     if(reg_plots[-1]=='_'): reg_plots= reg_plots[:-1]
     
     print reg_plots

@@ -57,6 +57,7 @@ def choosevars(reg_df,cou_ini,var_str,daily, absch, relch,frommax, n, cond,fmtva
     days=np.linspace(1,len(var),len(var))
     dates = reg_df[regvars['date'][cou_ini]][cond].iloc[-n:]
     labes=''
+    print "labes",varnm, labes
     if daily is True:labes=labdaily[cou_ini]
     if max(var>0):
         plt.errorbar(days,var,fmt=fmtvar,yerr=varerr, label=varnm+labes)
@@ -160,5 +161,6 @@ def plot_region(reg_df, ini, daily,absch, relch, frommax, dology, display, ninp)
     
     plt.tight_layout()
     plt.savefig(hist_nm, dpi=200)
+    plt.clf()
     print "plot saved in:\n",hist_nm
     if display is True: os.system('display '+hist_nm)
