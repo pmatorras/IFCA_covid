@@ -34,17 +34,21 @@ exec(open("variables.py").read())
 #Function to get variable and error                                                                              
 def choosevars(reg_df,cou_ini,var_str,daily, absch, relch,frommax, n, cond,fmtvar):
     varnm=regvars[var_str][cou_ini]
+    ali='left'
     if("act" in var_str.lower()):
-        var=reg_df[regvars['cases'][cou_ini]]-reg_df[regvars['recov'][cou_ini]]-reg_df[regvars['death'][cou_ini]]
+        ali = 'right'
+        var = reg_df[regvars['cases'][cou_ini]]-reg_df[regvars['recov'][cou_ini]]-reg_df[regvars['death'][cou_ini]]
     else:
         var = reg_df[varnm]
     var=var[cond]
-
     if daily is True: var=var.diff()
+    varmax  = int(max(var.fillna(0)))
     varerr = np.sqrt(abs(var))
     if n<len(var):
         var    = var.iloc[-n:]
         varerr = varerr.iloc[-n:]
+    varimax = var.reset_index(drop=True).idxmax()
+
     if absch is True:
         varerr = geterrsum(var,n, relch)
         var    = var.diff().fillna(0)
@@ -61,7 +65,10 @@ def choosevars(reg_df,cou_ini,var_str,daily, absch, relch,frommax, n, cond,fmtva
     if daily is True:labes=labdaily[cou_ini]
     if max(var>0):
         plt.errorbar(days,var,fmt=fmtvar,yerr=varerr, label=varnm+labes)
-
+        if daily is True: plt.axvline(x=days[varimax],color=fmtvar[0],linestyle='dotted')
+        plt.annotate(str(varmax), (days[varimax], 1.05*max(var)), color=fmtvar[0],weight='bold', fontsize=7, horizontalalignment=ali)
+        #plt.show()
+        print days[1], max(var)
     return var, varerr
 
 
@@ -118,8 +125,10 @@ def plot_region(reg_df, ini, daily,absch, relch, frommax, dology, display, ninp)
         frommax=False
     regs  = cou_ini
     cases = reg_df[regvars['cases'][cou_ini]]
-    cond  = cases>10
-    if cou_ini in ["Spain","Italy"]: cond=cases>1000
+    ncas  = 10
+    if cou_ini in ['sp','uk','us','fr']: ncas=1000
+    if reg_ini in 'CB': ncas=3
+    cond=cases>ncas
     n=min(ninp,len(cases[cond])-1)
 
     #Make histograms                                                                                              
@@ -143,13 +152,14 @@ def plot_region(reg_df, ini, daily,absch, relch, frommax, dology, display, ninp)
         if cou_ini   in 'uk': ymin=-0.1
         elif cou_ini in 'sp': ymin=min(0,min(recov))-0.1
         else :ymin=min(0,min(recov), min(hospi))-0.1
+        print ymin
         plt.ylim(ymin,1.1)
     #Set up optional displays                                                                                     
     if(relch is False):
         if daily is False: plt.ylim(5,1.2*np.nanmax(cases))
         if dology is True:
             plt.yscale('log')
-            if(cou_ini in 'sp') :plt.ylim(10, 1.2*np.nanmax(cases))
+            plt.ylim(0.5*ncas, 1.2*np.nanmax(cases))
 
     #Add title and legend                                                                                         
     plt.title(title)
