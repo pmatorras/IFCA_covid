@@ -22,13 +22,11 @@ def findreg(inreg):
         if inreg in region.lower() or regions[region].lower().find(inreg) is 0 :
             cou_ini  = 'sp'
             reg_ini  = region
-            print "region is  22", inreg, regions[region]
     if 'none' in reg_nm: 
         for canton in cantons:
             if inreg in canton.lower() or cantons[canton].lower().find(inreg) is 0:
                 cou_ini = 'ch'
                 reg_ini = canton
-                print "Canton is",  cantons[canton]
     return cou_ini, reg_ini
 
 
@@ -40,12 +38,9 @@ def findcountry(inputreg):
     for country in countries:
         cname=countries[country]
         if inreg in country.lower() or cname.lower().find(inreg) is 0:
-            print country
             cou_ini = country
             inreg=country
-    print "country", cou_ini
     if('none' in cou_ini or len(reg_sp)>1):
-        print "region"
         cou_ini,reg_ini=findreg(reg_sp[len(reg_sp)-1])
     return cou_ini, reg_ini
 
@@ -76,7 +71,7 @@ def handledf(df,cou_in, reg_in,display):
         else:
             dfch = df.groupby('date', as_index=False).sum()
             regdf = dfch[dfch['ncumul_conf'].diff()>0]#, regdf['date']
-            if len(dfch)>len(regdf): print "MISSING DATA"
+            if len(dfch)>len(regdf): print "MISSING DATA IN", cou_in
     elif 'us' in cou_in:
         df['date'] = pd.to_datetime(df['date'], format='%Y%m%d').dt.date
         regdf= df.sort_values(by='date')
@@ -95,11 +90,20 @@ if __name__ == '__main__':
     parser.add_option('--rel' , dest='rel' , help='check per dayrelative changes', default=False, action='store_true')
     parser.add_option('--logy' , dest='logy' , help='do logy', default=False, action='store_true')
     parser.add_option('--display' , dest='display' , help='display', default=False, action='store_true')
-    parser.add_option('--frommax' , dest='frommax' , help='display', default=False, action='store_true')
+    parser.add_option('--frommax' , dest='frommax' , help='normalise to max', default=False, action='store_true')
+    parser.add_option('--roll' , dest='roll' , help='do roll mean', default=False, action='store_true')
+    
     parser.add_option('--n' , dest='ndays' , help='number of days to show', default='100')
     parser.add_option('--new' , dest='new' , help='renew csv', default=False, action='store_true')
     (opt, args) = parser.parse_args()
-
+    regInp  = opt.region
+    daily   = opt.daily
+    absch   = opt.change
+    relch   = opt.rel
+    frommax = opt.frommax
+    logy    = opt.logy
+    disp    = opt.display
+    doroll  = opt.roll
     if "none" in opt.region:
         print "choose a region"
         exit()
@@ -114,7 +118,6 @@ if __name__ == '__main__':
     if('region' in regin or 'all' in regin): doRegions   = True
     if('countr' in regin or 'all' in regin): doCountries = True
 
-    print doCantons
     #exit()
     reg_plots=''
     if(doRegions is True):
@@ -126,10 +129,8 @@ if __name__ == '__main__':
     elif True not in [doCantons,doRegions,doCountries]: reg_plots=opt.region
     if(reg_plots[-1]=='_'): reg_plots= reg_plots[:-1]
     
-    print reg_plots
-
+    alldf={}
     for reg in reg_plots.split('_'):
-        print reg
         cou_ini,reg_ini = findcountry(reg)
 
         path     = paths[cou_ini]
@@ -139,6 +140,12 @@ if __name__ == '__main__':
             os.system('wget -N '+path+' --directory='+datdir)    
     
         df    = pd.read_csv(csv_file)
-        regdf = handledf(df, cou_ini,reg_ini, opt.display)
+        reg_df = handledf(df, cou_ini,reg_ini, opt.display)
         ini   = [cou_ini,reg_ini]
-        plot_region(regdf, ini, opt.daily,opt.change,opt.rel,opt.frommax,opt.logy, opt.display, ndays)
+        region_stats(reg_df, ini, daily,absch,relch,frommax,logy, disp, ndays, doroll)
+        
+        alldfkey=cou_ini
+        if 'none' not in reg_ini:alldfkey+='_'+reg_ini
+        alldf[alldfkey]=reg_df
+    print alldf.keys()
+    #compare_curves(alldf, ini, daily,absch,relch, frommax, logy, disp,ndays)
