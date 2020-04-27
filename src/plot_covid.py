@@ -41,8 +41,7 @@ exec(open("variables.py").read())
 #Function to get variable and error                                                                              
 def choosevars(reg_df,cou_ini,var_str,daily, absch, relch,frommax, n, cond,fmtvar, doroll):
     cou_ini, reg_ini= ini_parts(ini)
-    varnm = regvars[var_str][cou_ini]
-    dates = reg_df[regvars['date'][cou_ini]][cond].iloc[-n:]
+    var_nm = regvars[var_str][cou_ini]
     msize = 5
     dashl = '-'
     ali='left'
@@ -50,10 +49,10 @@ def choosevars(reg_df,cou_ini,var_str,daily, absch, relch,frommax, n, cond,fmtva
         ali = 'right'
         var = reg_df[regvars['cases'][cou_ini]]-reg_df[regvars['recov'][cou_ini]]-reg_df[regvars['death'][cou_ini]]
     else:
-        var = reg_df[varnm]
+        var = reg_df[var_nm]
     var  = var[cond]
     if doroll is True :
-        msize = 4
+        msize = 2
         dashl = ':'
         varm  = var.rolling(7).mean().fillna(0)
     else: varm=var
@@ -79,21 +78,24 @@ def choosevars(reg_df,cou_ini,var_str,daily, absch, relch,frommax, n, cond,fmtva
     if relch is True:
         varerr = 1#geterrsum(var,n,relch)                                  
         var    = 100*var.pct_change().fillna(0)
-        varnm  = 100*varm.pct_change().fillna(0)
+        var_nm = 100*varm.pct_change().fillna(0)
     if frommax is True:
         var ,varerr  = norm_max(var,n)
         varm,varmerr = norm_max(varm,n) 
         if varmax<100: varerr=np.zeros(len(var))
     #print varm, var
+
     fmtdata = fmtvar+dashl
     days=np.linspace(1,len(var),len(var))
-
+    dates = reg_df[regvars['date'][cou_ini]][cond].iloc[-n:]
+    #exit()
     labes=''
+
     
     if daily is True:labes=labdaily[cou_ini]
     if max(var>0):
-        plt.errorbar(days,var,fmt=fmtdata,yerr=varerr,lw=1, label=varnm+labes, markersize=msize)
-        plt.plot(days,varm, color=fmtvar[0],label='_nolegend_')
+        plt.errorbar(days,var,fmt=fmtdata,yerr=varerr,lw=0.4, label=var_nm+labes, markersize=msize)
+        plt.plot(days,varm, color=fmtvar[0],linestyle='-',label='_nolegend_')
         if daily is True: plt.axvline(x=days[varimax],color=fmtvar[0],linestyle='dotted')
         plt.annotate(str(varmax), (days[varimax], 1.05*max(var)), color=fmtvar[0],weight='bold', fontsize=7, horizontalalignment=ali)
     return var, varerr
@@ -187,9 +189,8 @@ def region_stats(reg_df, ini, daily,absch, relch, frommax, dology, display, ninp
         if daily is False: plt.ylim(5,1.2*np.nanmax(cases))
         if dology is True:
             plt.yscale('log')
-            ncas=1
-            plt.ylim(0.5*ncas
-                     , 1.2*np.nanmax(cases))
+            ncas=100
+            plt.ylim(0.5*ncas, 1.2*np.nanmax(cases))
 
     #Add title and legend                                                                                         
     plt.title(title)

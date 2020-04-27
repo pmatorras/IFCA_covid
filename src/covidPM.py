@@ -49,6 +49,7 @@ def handledf(df,cou_in, reg_in,display):
     if "sp" in cou_in:
         if display is True: shownotes(df)
         df.dropna()
+        df["CASOS"]=df["CASOS"].fillna(0)+df["PCR+"].fillna(0)+df["TestAc+"].fillna(0)
         if 'none' not in reg_in:
             regdf = df.loc[df["CCAA"] == reg_in]
         else:
@@ -138,7 +139,7 @@ if __name__ == '__main__':
         if(opt.new is True):
             print "downloading files"
             os.system('wget -N '+path+' --directory='+datdir)    
-    
+            print "save in", datdir
         df    = pd.read_csv(csv_file)
         reg_df = handledf(df, cou_ini,reg_ini, opt.display)
         ini   = [cou_ini,reg_ini]

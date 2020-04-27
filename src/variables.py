@@ -28,6 +28,8 @@ paths={'it':'https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-anda
        'ch': 'https://raw.githubusercontent.com/openZH/covid_19/master/COVID19_Fallzahlen_CH_total.csv',
        'us': 'https://covidtracking.com/api/us/daily.csv',
        'sp': 'https://covid19.isciii.es/resources/serie_historica_acumulados.csv'}
+#'https://covid19.isciii.es/resources/serie_historica_acumulados.csv'}
+
 #add daily to legend if necessary
 labdaily={'sp':' diarios', 'it':' giornaliero', 'fr':' par jour', 'us': \
 ' per day', 'uk': ' per day', 'ch': ' per day'}
