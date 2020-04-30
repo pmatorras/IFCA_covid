@@ -14,16 +14,15 @@ def ini_parts(ini):
     return cou_ini, reg_ini
 
 
-def norm_max(var,n):
+def norm_max(var):
     varmax=var.max()
-    varerr=(np.sqrt(abs(1/var)+(1/varmax))*(var/varmax)).iloc[-n:].fillna(\
-0)
-    var=var.iloc[-n:].fillna(0)/varmax
+    varerr=(np.sqrt(abs(1/var)+(1/varmax))*(var/varmax)).fillna(0)
+    var=var.fillna(0)/varmax
     return var, varerr
 '''
 Small function to take advantage of the fact of the poisonian unc is the square root, and the unc of the difference is the sqrt of each error squared                       
 '''
-def geterrsum(var,n, relch):
+def geterrsum(var, relch):
     line = pd.Series([0])
     varb = line.append(var, ignore_index=True)
     varres = var.reset_index(drop=True)
@@ -42,7 +41,7 @@ exec(open("variables.py").read())
 def choosevars(reg_df,cou_ini,var_str,daily, absch, relch,frommax, n, cond,fmtvar, doroll):
     cou_ini, reg_ini= ini_parts(ini)
     var_nm = regvars[var_str][cou_ini]
-    msize = 5
+    msize = 4
     dashl = '-'
     ali='left'
     if("act" in var_str.lower()):
@@ -51,19 +50,28 @@ def choosevars(reg_df,cou_ini,var_str,daily, absch, relch,frommax, n, cond,fmtva
     else:
         var = reg_df[var_nm]
     var  = var[cond]
+    
+    if daily is True:
+        var  =var.diff()
+    varmax  = int(max(var.fillna(0)))
+    varerr  = np.sqrt(abs(var))
+    
+    if absch is True:
+        varerr = geterrsum(var, relch)
+        var    = var.diff().fillna(0)
+    if relch is True:
+        varerr = 1#geterrsum(var,n,relch)                                  
+        var    = 100*var.pct_change().fillna(0)
+    if frommax is True:
+        var ,varerr  = norm_max(var)
+        if varmax<100: varerr=pd.Series(np.zeros(len(var)))
+    #print varm, var
     if doroll is True :
         msize = 2
         dashl = ':'
         varm  = var.rolling(7).mean().fillna(0)
-    else: varm=var
-    
-
-    if daily is True:
-        var  =var.diff()
-        varm = varm.diff()
-    varmax  = int(max(var.fillna(0)))
-    varerr  = np.sqrt(abs(var))
-    
+    else:
+        varm =var
     if n<len(var):
         var    = var.iloc[-n:]
         varerr = varerr.iloc[-n:]
@@ -71,20 +79,7 @@ def choosevars(reg_df,cou_ini,var_str,daily, absch, relch,frommax, n, cond,fmtva
     
     varimax = var.reset_index(drop=True).idxmax()
 
-    if absch is True:
-        varerr = geterrsum(var,n, relch)
-        var    = var.diff().fillna(0)
-        varm   = varm.diff().fillna(0)
-    if relch is True:
-        varerr = 1#geterrsum(var,n,relch)                                  
-        var    = 100*var.pct_change().fillna(0)
-        var_nm = 100*varm.pct_change().fillna(0)
-    if frommax is True:
-        var ,varerr  = norm_max(var,n)
-        varm,varmerr = norm_max(varm,n) 
-        if varmax<100: varerr=np.zeros(len(var))
-    #print varm, var
-
+    
     fmtdata = fmtvar+dashl
     days=np.linspace(1,len(var),len(var))
     dates = reg_df[regvars['date'][cou_ini]][cond].iloc[-n:]
@@ -95,7 +90,7 @@ def choosevars(reg_df,cou_ini,var_str,daily, absch, relch,frommax, n, cond,fmtva
     if daily is True:labes=labdaily[cou_ini]
     if max(var>0):
         plt.errorbar(days,var,fmt=fmtdata,yerr=varerr,lw=0.4, label=var_nm+labes, markersize=msize)
-        plt.plot(days,varm, color=fmtvar[0],linestyle='-',label='_nolegend_')
+        plt.plot(days,varm, color=fmtvar[0],linestyle='-',lw=1.25,label='_nolegend_')
         if daily is True: plt.axvline(x=days[varimax],color=fmtvar[0],linestyle='dotted')
         plt.annotate(str(varmax), (days[varimax], 1.05*max(var)), color=fmtvar[0],weight='bold', fontsize=7, horizontalalignment=ali)
     return var, varerr
@@ -190,6 +185,7 @@ def region_stats(reg_df, ini, daily,absch, relch, frommax, dology, display, ninp
         if dology is True:
             plt.yscale('log')
             ncas=100
+            if cou_ini in 'ch' :ncas=10
             plt.ylim(0.5*ncas, 1.2*np.nanmax(cases))
 
     #Add title and legend                                                                                         
