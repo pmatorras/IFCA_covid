@@ -38,7 +38,7 @@ def geterrsum(var, relch):
 exec(open("variables.py").read())
 
 #Function to get variable and error                                                                              
-def choosevars(reg_df,cou_ini,var_str,daily, absch, relch,frommax, n, cond,fmtvar, doroll):
+def choosevars(reg_df,ini,var_str,daily, absch, relch,frommax, n, cond,fmtvar, doroll, labinreg):
     cou_ini, reg_ini= ini_parts(ini)
     var_nm = regvars[var_str][cou_ini]
     msize = 4
@@ -50,7 +50,6 @@ def choosevars(reg_df,cou_ini,var_str,daily, absch, relch,frommax, n, cond,fmtva
     else:
         var = reg_df[var_nm]
     var  = var[cond]
-    
     if daily is True:
         var  =var.diff()
     varmax  = int(max(var.fillna(0)))
@@ -65,7 +64,6 @@ def choosevars(reg_df,cou_ini,var_str,daily, absch, relch,frommax, n, cond,fmtva
     if frommax is True:
         var ,varerr  = norm_max(var)
         if varmax<100: varerr=pd.Series(np.zeros(len(var)))
-    #print varm, var
     if doroll is True :
         msize = 2
         dashl = ':'
@@ -79,8 +77,9 @@ def choosevars(reg_df,cou_ini,var_str,daily, absch, relch,frommax, n, cond,fmtva
     
     varimax = var.reset_index(drop=True).idxmax()
 
-    
-    fmtdata = fmtvar+dashl
+    print fmtvar, dashl
+    if len(fmtvar)>1: fmtdata=fmtvar
+    else: fmtdata = fmtvar+dashl
     days=np.linspace(1,len(var),len(var))
     dates = reg_df[regvars['date'][cou_ini]][cond].iloc[-n:]
     #exit()
@@ -89,7 +88,16 @@ def choosevars(reg_df,cou_ini,var_str,daily, absch, relch,frommax, n, cond,fmtva
     
     if daily is True:labes=labdaily[cou_ini]
     if max(var>0):
-        plt.errorbar(days,var,fmt=fmtdata,yerr=varerr,lw=0.4, label=var_nm+labes, markersize=msize)
+        print var_nm, cou_ini
+        if labinreg is True:
+            if 'none' in reg_ini:
+                lab= countries[cou_ini]
+            else:
+                if 'sp' in cou_ini: lab=regions[reg_ini]
+                elif 'ch' in cou_ini:  lab=cantons[reg_ini]
+                else: print "somethings wrong..."
+        else: lab=var_nm+labes
+        plt.errorbar(days,var,fmt=fmtdata,yerr=varerr,lw=0.4, label=lab, markersize=msize)
         plt.plot(days,varm, color=fmtvar[0],linestyle='-',lw=1.25,label='_nolegend_')
         if daily is True: plt.axvline(x=days[varimax],color=fmtvar[0],linestyle='dotted')
         plt.annotate(str(varmax), (days[varimax], 1.05*max(var)), color=fmtvar[0],weight='bold', fontsize=7, horizontalalignment=ali)
@@ -151,6 +159,7 @@ def getcond(cases,cou_ini,reg_ini, ninp):
 def region_stats(reg_df, ini, daily,absch, relch, frommax, dology, display, ninp, doroll):
     #Do basic crosschecks to not get meaningless plots
     cou_ini, reg_ini= ini_parts(ini)
+    print cou_ini, reg_ini
     if relch is True:
         absch=False
         frommax=False
@@ -161,14 +170,14 @@ def region_stats(reg_df, ini, daily,absch, relch, frommax, dology, display, ninp
     hist_nm, plot_nm   = nameplot(cou_ini,reg_ini,daily,absch,relch,frommax,dology)
     title,ylab,titad = choosetitle(plot_nm,daily,absch,relch,frommax)
     if cou_ini not in 'uk':
-        activ, activerr=choosevars(reg_df, cou_ini, 'activ', daily, absch,relch,frommax, n, cond, 'bo',doroll)
-    cases, caseserr=choosevars(reg_df, cou_ini, 'cases', daily, absch,relch,frommax, n, cond, 'ko',doroll)
-    if True not in [absch,relch] and cou_ini not in ['sp', 'uk']:
-        hospi, hospierr=choosevars(reg_df, cou_ini, 'hospi', daily, absch,relch,frommax, n, cond, 'co',doroll)
-        serio, serioerr=choosevars(reg_df, cou_ini, 'serio', daily, absch,relch,frommax, n, cond, 'yo',doroll)
+        activ, activerr=choosevars(reg_df, ini, 'activ', daily, absch,relch,frommax, n, cond, 'bo',doroll,False)
+    cases, caseserr=choosevars(reg_df, ini, 'cases', daily, absch,relch,frommax, n, cond, 'ko',doroll,False)
+    if True not in [absch,relch] and ini not in ['sp', 'uk']:
+        hospi, hospierr=choosevars(reg_df, ini, 'hospi', daily, absch,relch,frommax, n, cond, 'co',doroll,False)
+        serio, serioerr=choosevars(reg_df, ini, 'serio', daily, absch,relch,frommax, n, cond, 'yo',doroll,False)
     if cou_ini not in 'uk':
-        recov, recoverr=choosevars(reg_df, cou_ini, 'recov', daily, absch,relch,frommax, n, cond, 'go',doroll)
-    death, deatherr=choosevars(reg_df, cou_ini, 'death', daily, absch,relch,frommax, n, cond, 'ro',doroll)
+        recov, recoverr=choosevars(reg_df, ini, 'recov', daily, absch,relch,frommax, n, cond, 'go',doroll,False)
+    death, deatherr=choosevars(reg_df, ini, 'death', daily, absch,relch,frommax, n, cond, 'ro',doroll,False)
     days=np.linspace(1,len(cases),len(cases))
     dates = reg_df[regvars['date'][cou_ini]][cond].iloc[-n:]
     if frommax is True:
@@ -204,16 +213,19 @@ def region_stats(reg_df, ini, daily,absch, relch, frommax, dology, display, ninp
 
 
 
-def compare_curves(alldf, ini, daily, absch, relch, frommax, logy, disp, ninp):
+def compare_curves(alldf, daily, absch, relch, frommax, logy, disp, ninp):
     print "in"
     cols=['b','g','r','c','m','y','k']
-    for i,df in enumerate(alldf):
-        reg_df=alldf[df]
-        cases = reg_df[regvars['cases'][cou_ini]]
+    for i,reg in enumerate(alldf):
+        reg_df=alldf[reg]
+        print reg, cou_ini
+        cases = reg_df[regvars['cases'][reg]]
         cond,n= getcond(cases,cou_ini, reg_ini, ninp)
-
-        cases,caseserr=choosevars(reg_df, ini, 'cases', daily, absch,relch,frommax, n, cond, cols[i]+'o-')
-        death,deatherr=choosevars(reg_df, ini, 'death', daily, absch,relch,frommax, n, cond, cols[i]+'o:')
+        doroll=False
+        ini=reg.split('_')
+        if len(ini)<2:  ini.append('none')
+        cases,caseserr=choosevars(reg_df, ini, 'cases', daily, absch,relch,frommax, n, cond, cols[i]+'o-', doroll, True)
+        #death,deatherr=choosevars(reg_df, ini, 'death', daily, absch,relch,frommax, n, cond, cols[i]+'o:', doroll)
         plt.legend()
     plt.show()
     

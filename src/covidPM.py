@@ -143,10 +143,13 @@ if __name__ == '__main__':
         df    = pd.read_csv(csv_file)
         reg_df = handledf(df, cou_ini,reg_ini, opt.display)
         ini   = [cou_ini,reg_ini]
+        print ini
         region_stats(reg_df, ini, daily,absch,relch,frommax,logy, disp, ndays, doroll)
-        
         alldfkey=cou_ini
-        if 'none' not in reg_ini:alldfkey+='_'+reg_ini
-        alldf[alldfkey]=reg_df
-    print alldf.keys()
-    #compare_curves(alldf, ini, daily,absch,relch, frommax, logy, disp,ndays)
+        if 'none' not in reg_ini:
+            alldfkey+='_'+reg_ini
+            alldf[alldfkey]=reg_df
+        else:
+            alldf[alldfkey]=reg_df
+    #print alldf.keys(), alldf
+    #compare_curves(alldf, daily,absch,relch, frommax, logy, disp,ndays)
