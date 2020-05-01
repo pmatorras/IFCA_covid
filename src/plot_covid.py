@@ -7,6 +7,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pandas.compat import u
 pd.options.mode.chained_assignment = None  # default='warn' 
+def get_plot_type(plot_type):
+    daily=plot_type[0]
+    absch=plot_type[1]
+    relch=plot_type[2]
+    frommax=plot_type[3]
+    doroll=plot_type[4]
+    return daily, absch, relch, frommax, doroll
+
 
 def ini_parts(ini):
     cou_ini=ini[0]
@@ -38,7 +46,8 @@ def geterrsum(var, relch):
 exec(open("variables.py").read())
 
 #Function to get variable and error                                                                              
-def choosevars(reg_df,ini,var_str,daily, absch, relch,frommax, n, cond,fmtvar, doroll, labinreg):
+def choosevars(reg_df,ini,var_str,plot_type, n, cond,fmtvar, labinreg):
+    daily,absch,relch,frommax,doroll=get_plot_type(plot_type)
     cou_ini, reg_ini= ini_parts(ini)
     var_nm = regvars[var_str][cou_ini]
     msize = 4
@@ -106,7 +115,9 @@ def choosevars(reg_df,ini,var_str,daily, absch, relch,frommax, n, cond,fmtvar, d
 
 
 #Choose title for the histograms                                                                                 
-def choosetitle(plot_nm,daily,absch,relch,frommax):
+def choosetitle(plot_nm,plot_type):
+    daily,absch,relch,frommax,doroll=get_plot_type(plot_type)
+
     title = "Total cases for "+plot_nm
     ylab  = "Accumulated cases"
     titad = "Accumulated"
@@ -127,7 +138,8 @@ def choosetitle(plot_nm,daily,absch,relch,frommax):
     return title, ylab, titad
 
 #Function to, given the parameters, give a name                                                                  
-def nameplot(cou_ini, reg_ini,daily,absch,relch,frommax,dology):
+def nameplot(cou_ini, reg_ini,plot_type,dology):
+    daily,absch,relch,frommax,doroll=get_plot_type(plot_type)
     hname='accumulated'
     if daily   is True: hname='daily'
     if absch   is True: hname+='_abschange'
@@ -155,10 +167,11 @@ def getcond(cases,cou_ini,reg_ini, ninp):
     cond=cases>ncas
     n=min(ninp,len(cases[cond])-1)
     return cond, n
-
-def region_stats(reg_df, ini, daily,absch, relch, frommax, dology, display, ninp, doroll):
+def region_stats(reg_df, ini, plot_type, dology, display, ninp):
     #Do basic crosschecks to not get meaningless plots
     cou_ini, reg_ini= ini_parts(ini)
+    #plot_type=[daily, absch,relch,frommax,doroll]
+    daily,absch,relch,frommax,doroll=get_plot_type(plot_type)
     print cou_ini, reg_ini
     if relch is True:
         absch=False
@@ -167,17 +180,17 @@ def region_stats(reg_df, ini, daily,absch, relch, frommax, dology, display, ninp
     cases = reg_df[regvars['cases'][cou_ini]]
     cond,n= getcond(cases,cou_ini, reg_ini, ninp)
     #Make histograms                                                                                              
-    hist_nm, plot_nm   = nameplot(cou_ini,reg_ini,daily,absch,relch,frommax,dology)
-    title,ylab,titad = choosetitle(plot_nm,daily,absch,relch,frommax)
+    hist_nm, plot_nm   = nameplot(cou_ini,reg_ini,plot_type,dology)
+    title,ylab,titad = choosetitle(plot_nm,plot_type)
     if cou_ini not in 'uk':
-        activ, activerr=choosevars(reg_df, ini, 'activ', daily, absch,relch,frommax, n, cond, 'bo',doroll,False)
-    cases, caseserr=choosevars(reg_df, ini, 'cases', daily, absch,relch,frommax, n, cond, 'ko',doroll,False)
+        activ, activerr=choosevars(reg_df, ini, 'activ', plot_type, n, cond, 'bo',False)
+    cases, caseserr=choosevars(reg_df, ini, 'cases', plot_type, n, cond, 'ko',False)
     if True not in [absch,relch] and ini not in ['sp', 'uk']:
-        hospi, hospierr=choosevars(reg_df, ini, 'hospi', daily, absch,relch,frommax, n, cond, 'co',doroll,False)
-        serio, serioerr=choosevars(reg_df, ini, 'serio', daily, absch,relch,frommax, n, cond, 'yo',doroll,False)
+        hospi, hospierr=choosevars(reg_df, ini, 'hospi', plot_type, n, cond, 'co',False)
+        serio, serioerr=choosevars(reg_df, ini, 'serio', plot_type, n, cond, 'yo',False)
     if cou_ini not in 'uk':
-        recov, recoverr=choosevars(reg_df, ini, 'recov', daily, absch,relch,frommax, n, cond, 'go',doroll,False)
-    death, deatherr=choosevars(reg_df, ini, 'death', daily, absch,relch,frommax, n, cond, 'ro',doroll,False)
+        recov, recoverr=choosevars(reg_df, ini, 'recov', plot_type, n, cond, 'go',False)
+    death, deatherr=choosevars(reg_df, ini, 'death', plot_type, n, cond, 'ro',False)
     days=np.linspace(1,len(cases),len(cases))
     dates = reg_df[regvars['date'][cou_ini]][cond].iloc[-n:]
     if frommax is True:
@@ -203,7 +216,7 @@ def region_stats(reg_df, ini, daily,absch, relch, frommax, dology, display, ninp
     plt.legend()
     plt.grid()
     plt.xticks(days,dates, rotation='vertical')
-
+    
     
     plt.tight_layout()
     plt.savefig(hist_nm, dpi=200)
@@ -213,18 +226,19 @@ def region_stats(reg_df, ini, daily,absch, relch, frommax, dology, display, ninp
 
 
 
-def compare_curves(alldf, daily, absch, relch, frommax, logy, disp, ninp):
+def compare_curves(alldf, plot_type, logy, disp, ninp):
     print "in"
+    daily,absch,relch,frommax,doroll=get_plot_type(plot_type)
+    
     cols=['b','g','r','c','m','y','k']
     for i,reg in enumerate(alldf):
         reg_df=alldf[reg]
         print reg, cou_ini
         cases = reg_df[regvars['cases'][reg]]
         cond,n= getcond(cases,cou_ini, reg_ini, ninp)
-        doroll=False
         ini=reg.split('_')
         if len(ini)<2:  ini.append('none')
-        cases,caseserr=choosevars(reg_df, ini, 'cases', daily, absch,relch,frommax, n, cond, cols[i]+'o-', doroll, True)
+        cases,caseserr=choosevars(reg_df, ini, 'cases', plot_type, n, cond, cols[i]+'o-', True)
         #death,deatherr=choosevars(reg_df, ini, 'death', daily, absch,relch,frommax, n, cond, cols[i]+'o:', doroll)
         plt.legend()
     plt.show()

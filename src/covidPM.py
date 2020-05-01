@@ -144,7 +144,8 @@ if __name__ == '__main__':
         reg_df = handledf(df, cou_ini,reg_ini, opt.display)
         ini   = [cou_ini,reg_ini]
         print ini
-        region_stats(reg_df, ini, daily,absch,relch,frommax,logy, disp, ndays, doroll)
+        plot_type=[daily, absch,relch,frommax,doroll]
+        region_stats(reg_df, ini, plot_type,logy, disp, ndays)
         alldfkey=cou_ini
         if 'none' not in reg_ini:
             alldfkey+='_'+reg_ini
@@ -152,4 +153,4 @@ if __name__ == '__main__':
         else:
             alldf[alldfkey]=reg_df
     #print alldf.keys(), alldf
-    #compare_curves(alldf, daily,absch,relch, frommax, logy, disp,ndays)
+    #compare_curves(alldf, plot_type, logy, disp,ndays)
